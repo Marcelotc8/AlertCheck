@@ -1,6 +1,7 @@
 // Modo demo: avisos oficiales archivados (Huracán Milton, 9 oct 2024) como officialOverride.
-import { readFileSync } from "node:fs";
 import type { Label, OfficialAlert } from "./swarmVerify.js";
+// Datos en un módulo TS (no un JSON leído del disco) para que funcionen igual en Node, en el servidor y en Vercel.
+import demoData from "./demoData.js";
 
 export interface DemoAlert {
   id: string;
@@ -11,7 +12,7 @@ export interface DemoAlert {
   pattern?: string;
 }
 
-const data = JSON.parse(readFileSync(new URL("./demo-alerts.json", import.meta.url), "utf8")) as {
+const data = demoData as unknown as {
   official: OfficialAlert[];
   alerts: DemoAlert[];
 };
