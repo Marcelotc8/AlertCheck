@@ -1,0 +1,37 @@
+[
+  {
+    "id": "demo-ts-warning-mfl",
+    "event": "Tropical Storm Warning",
+    "areaDesc": "Coastal Broward; Inland Broward; Metro Broward; Coastal Miami-Dade; Inland Miami-Dade; Metropolitan Miami-Dade; Far South Miami-Dade; Coastal Palm Beach; Inland Palm Beach; Metro Palm Beach",
+    "headline": "Tropical Storm Warning issued October 9 at 11:41AM EDT by NWS Miami FL (Hurricane Milton Local Statement Advisory 18)",
+    "expires": "2024-10-10T19:45:00-04:00"
+  },
+  {
+    "id": "demo-ss-warning-monroe",
+    "event": "Storm Surge Warning",
+    "areaDesc": "Mainland Monroe; Coastal Collier",
+    "headline": "Storm Surge Warning issued October 9 at 11:41AM EDT by NWS Miami FL",
+    "expires": "2024-10-10T19:45:00-04:00"
+  },
+  {
+    "id": "demo-ts-warning-key",
+    "event": "Tropical Storm Warning",
+    "areaDesc": "Monroe Lower Keys; Monroe Middle Keys; Monroe Upper Keys",
+    "headline": "Tropical Storm Warning issued October 9 at 12:18PM EDT by NWS Key West FL (Hurricane Milton Local Statement Advisory 18)",
+    "expires": "2024-10-10T20:30:00-04:00"
+  },
+  {
+    "id": "demo-tor-0043",
+    "event": "Tornado Warning",
+    "areaDesc": "Southeastern Collier, FL; Northern Mainland Monroe, FL; Northern Miami-Dade, FL; Southern Broward, FL",
+    "headline": "Tornado Warning issued October 9 at 7:47AM EDT until October 9 at 8:15AM EDT by NWS Miami FL",
+    "expires": "2024-10-09T08:15:00-04:00"
+  },
+  {
+    "id": "demo-nhc-advisory-17",
+    "event": "Hurricane Milton Public Advisory",
+    "areaDesc": "Florida Keys, including Dry Tortugas and Florida Bay (Tropical Storm Warning); Florida east coast south of the St. Lucie/Martin County Line to Flamingo (Tropical Storm Warning); Dry Tortugas (Hurricane Watch); Florida west coast from Flamingo northward (Storm Surge Warning)",
+    "headline": "Hurricane Milton Advisory Number 17, NWS National Hurricane Center Miami FL, 400 AM CDT Wed Oct 09 2024",
+    "expires": "2024-10-10T05:00:00-04:00"
+  }
+]

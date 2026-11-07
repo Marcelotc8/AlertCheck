@@ -1,4 +1,5 @@
 // StormCheck — núcleo: alertas oficiales del NWS + enjambre de 4 agentes en Swarms.
+import { detectScamSignals, STRONG_SCAM_SCORE } from "./scamSignals.js";
 
 export type Label = "verified" | "suspicious" | "unverified";
 
@@ -17,8 +18,10 @@ export interface VerifyResult {
   label: Label;
   confidence: number; // 0..1
   reasons: string[];
+  reasons_es: string[];
   matchedAlert: OfficialAlert | null;
   cost: number | null; // USD reportado por Swarms
+  overridden?: { from: Label; by: "scam-rules" }; // el barandal cambió la etiqueta del enjambre
   raw?: unknown;
 }
 
@@ -80,7 +83,7 @@ export const SWARM_AGENTS = [
   agent(
     "Judge",
     "Emite el veredicto final",
-    'Using all previous outputs, output ONLY this JSON, nothing else: {"label":"verified"|"suspicious"|"unverified","confidence":0-1,"reasons":[3 short reasons in English],"matchedAlertId":string|null}. Use "verified" only if it matches an official alert and has no scam signals; "suspicious" if there are scam signals or it contradicts official alerts; otherwise "unverified".'
+    'Using all previous outputs, output ONLY this JSON, nothing else: {"label":"verified"|"suspicious"|"unverified","confidence":0-1,"reasons":[3 short reasons in English],"reasons_es":[the same 3 reasons in plain Latin American Spanish],"matchedAlertId":string|null}. Use "verified" only if it matches an official alert and has no scam signals; "suspicious" if there are scam signals or it contradicts official alerts; otherwise "unverified".'
   ),
 ];
 
@@ -100,11 +103,14 @@ function extractJson(text: string): Record<string, unknown> | null {
 export async function verifyAlert(alertText: string, officialOverride?: OfficialAlert[]): Promise<VerifyResult> {
   const official = officialOverride ?? (await getOfficialAlerts().catch(() => []));
 
+  const scam = detectScamSignals(alertText);
   const task = `ALERT TO VERIFY:\n"""${alertText}"""\n\nACTIVE OFFICIAL NWS ALERTS (South Florida):\n${
     official.length
       ? official.map((a) => `- id=${a.id} | ${a.event} | ${a.areaDesc} | ${a.headline}`).join("\n")
       : "(none active)"
-  }`;
+  }\n\nSCAM SIGNALS PRE-DETECTED BY DETERMINISTIC RULES:\n${
+    scam.signals.length ? scam.signals.map((x) => `- ${x.reason}`).join("\n") : "(none)"
+  }\nNote: an official alert never asks for payments or personal data. Matching the hazard/area of an official alert does NOT make a message verified if it adds instructions (payments, sign-ups, shelters, data requests) that the official alert does not contain.`;
 
   const res = await fetch("https://api.swarms.world/v1/swarm/completions", {
     method: "POST",
@@ -130,12 +136,25 @@ export async function verifyAlert(alertText: string, officialOverride?: Official
     ? verdict.label
     : "unverified") as Label;
 
-  return {
+  const result: VerifyResult = {
     label,
     confidence: Number(verdict.confidence ?? 0.5),
     reasons: Array.isArray(verdict.reasons) ? (verdict.reasons as string[]).slice(0, 3) : [],
+    reasons_es: Array.isArray(verdict.reasons_es) ? (verdict.reasons_es as string[]).slice(0, 3) : [],
     matchedAlert: official.find((a) => a.id === verdict.matchedAlertId) ?? null,
     cost,
     raw: process.env.DEBUG_SWARMS ? data : undefined,
   };
+
+  // Barandal: con señales fuertes de estafa nunca se devuelve "verified", aunque el enjambre lo diga.
+  if (scam.score >= STRONG_SCAM_SCORE && result.label !== "suspicious") {
+    const top = scam.signals.sort((a, b) => b.weight - a.weight).slice(0, 2);
+    result.overridden = { from: result.label, by: "scam-rules" };
+    result.label = "suspicious";
+    result.confidence = Math.max(0.85, 1 - result.confidence * 0.5);
+    result.reasons = [...top.map((x) => x.reason), ...result.reasons].slice(0, 3);
+    result.reasons_es = [...top.map((x) => x.es), ...result.reasons_es].slice(0, 3);
+    result.matchedAlert = null;
+  }
+  return result;
 }
