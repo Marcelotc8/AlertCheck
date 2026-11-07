@@ -22,7 +22,7 @@ type Result = {
   offline?: boolean;
   text?: string;
   extracted?: { text: string; channel: string; sender: string } | null;
-  explanation?: { en: string; es: string; reasons_es: string[] } | null;
+  explanation?: { en: string; es: string; reasons_es: string[]; prune?: { cacheHit: boolean; costUsd: number } } | null;
   saved?: boolean;
   signedIn?: boolean;
 };
@@ -359,6 +359,7 @@ export default function Home() {
 
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
               {typeof result.cost === "number" && <span>Swarms: ${result.cost.toFixed(4)}</span>}
+              {result.explanation?.prune && <span>Gemini vía Prune: ${result.explanation.prune.costUsd.toFixed(4)}</span>}
               {result.saved && result.signedIn && <span>✓ {T.savedToHistory[lang]}</span>}
             </div>
           </section>

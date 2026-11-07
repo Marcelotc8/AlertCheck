@@ -7,7 +7,8 @@
     "dev": "tsx watch --env-file=.env src/index.ts",
     "start": "tsx --env-file=.env src/index.ts",
     "demo": "tsx --env-file=.env scripts/runDemo.ts",
-    "test:images": "tsx scripts/testImages.ts"
+    "test:images": "tsx scripts/testImages.ts",
+    "demo:prod": "tsx scripts/runProd.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",

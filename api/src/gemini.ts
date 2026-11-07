@@ -10,6 +10,79 @@ const QUOTA_COOLDOWN_MS = 5 * 60 * 1000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+const PRUNE_URL = "https://api.withprune.com/v1/proxy/gemini/generateContent";
+const PRUNE_TIMEOUT_MS = 20000;
+let pruneDownUntil = 0; // si Prune falla, ir directo a Gemini 5 min (la demo no puede caerse por el gateway)
+
+/** Recibo de Prune para una llamada: caché, costo y ahorro (de `prune_metadata`). */
+export interface PruneReceipt {
+  cacheHit: boolean;
+  costUsd: number;
+  savedUsd: number;
+}
+
+/**
+ * Solo texto → Gemini a través del gateway Prune (caché, Shield/redacción de datos, recibo de costo;
+ * la llave de Gemini vive en el vault de Prune). Prune usa formato `messages` e ignora responseSchema,
+ * así que pedimos el JSON en el prompt y validamos las claves requeridas. Devuelve null si no se pudo
+ * (sin llave, error, JSON inválido) y quien llama cae a Gemini directo.
+ */
+async function generateJsonViaPrune<T>(
+  prompt: string,
+  schema: Record<string, unknown>,
+  feature: string
+): Promise<{ data: T; receipt: PruneReceipt } | null> {
+  const key = process.env.PRUNE_API_KEY;
+  if (!key || Date.now() < pruneDownUntil) return null;
+  try {
+    const res = await fetch(PRUNE_URL, {
+      method: "POST",
+      headers: {
+        "X-Prune-Key": key,
+        "Content-Type": "application/json",
+        "X-Prune-Feature-Id": feature,
+        // Caché apagado: con prompts largos de prefijo común, Prune da aciertos semánticos aun con "exact"
+        // (devolvía "esta alerta es auténtica" para una estafa). En verificación eso es inaceptable.
+        "X-Prune-Cache": "off",
+      },
+      body: JSON.stringify({
+        model: MODEL(),
+        temperature: 0.2,
+        messages: [
+          {
+            role: "user",
+            content:
+              `${prompt}\n\nRespond with ONLY a JSON object (no code fences, no extra text) matching this JSON Schema:\n` +
+              JSON.stringify(schema),
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(PRUNE_TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    const body = (await res.json()) as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
+      prune_metadata?: { cache_hit?: boolean; cost_with_prune_usd?: number; cost_saved_usd?: number };
+    };
+    const raw = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+    const json = raw.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
+    const data = JSON.parse(json) as Record<string, unknown>;
+    const missing = ((schema.required as string[]) ?? []).filter((k) => data[k] === undefined);
+    if (missing.length) throw new Error(`faltan claves ${missing.join(", ")}`);
+    const m = body.prune_metadata ?? {};
+    return {
+      data: data as T,
+      receipt: { cacheHit: !!m.cache_hit, costUsd: m.cost_with_prune_usd ?? 0, savedUsd: m.cost_saved_usd ?? 0 },
+    };
+  } catch (e) {
+    console.warn(`Prune: ${(e as Error).message} → Gemini directo`);
+    // Error del gateway: dejarlo descansar. JSON inválido de una sola respuesta: no hace falta.
+    if (!(e instanceof SyntaxError) && !/faltan claves/.test((e as Error).message)) pruneDownUntil = Date.now() + 5 * 60 * 1000;
+    return null;
+  }
+}
+
+
 // Cortacircuitos: si la cuota de Gemini se agotó, no insistir durante 5 minutos (responder al instante con respaldo).
 let quotaExhaustedUntil = 0;
 
@@ -97,6 +170,7 @@ export interface Explanation {
   es: string;
   reasons_es: string[];
   source?: "gemini" | "template";
+  prune?: PruneReceipt; // presente si la explicación pasó por el gateway Prune
 }
 
 const TEMPLATES: Record<VerifyResult["label"], { en: string; es: string }> = {
@@ -119,39 +193,32 @@ export function templateExplanation(v: VerifyResult): Explanation {
   return { ...TEMPLATES[v.label], reasons_es: v.reasons_es.length ? v.reasons_es : v.reasons, source: "template" };
 }
 
-/** Convierte el veredicto del enjambre en una explicación simple, en inglés y español. */
+/** Convierte el veredicto del enjambre en una explicación simple, en inglés y español. Va por Prune; si falla, Gemini directo. */
 export async function explainVerdict(alertText: string, v: VerifyResult): Promise<Explanation> {
-  const e = await explainWithGemini(alertText, v);
-  return { ...e, source: "gemini" };
-}
-
-async function explainWithGemini(alertText: string, v: VerifyResult): Promise<Explanation> {
   const verdict = {
     label: v.label,
     confidence: v.confidence,
     reasons: v.reasons,
     matchedOfficialAlert: v.matchedAlert ? `${v.matchedAlert.event} — ${v.matchedAlert.areaDesc}` : null,
   };
-  return generateJson<Explanation>(
-    [
-      {
-        text:
-          "You explain hurricane-alert fact-checks to Miami residents, many of them older adults, in plain language (6th-grade level). " +
-          "Given the ALERT and the VERDICT from an analysis system, write 2–3 short sentences that say what the verdict means, why, and what the person should do now " +
-          "(e.g. follow the official alert and local officials; never pay, share personal data or forward a suspicious message; check weather.gov or miamidade.gov). " +
-          "Do not change the verdict. Write `en` in English and `es` in natural Latin American Spanish (not a literal translation). " +
-          "Also translate the reasons into Spanish as `reasons_es` (same order, short).\n\n" +
-          `ALERT:\n"""${alertText}"""\n\nVERDICT:\n${JSON.stringify(verdict)}`,
-      },
-    ],
-    {
-      type: "object",
-      properties: {
-        en: { type: "string" },
-        es: { type: "string" },
-        reasons_es: { type: "array", items: { type: "string" } },
-      },
-      required: ["en", "es", "reasons_es"],
-    }
-  );
+  const prompt =
+    "You explain hurricane-alert fact-checks to Miami residents, many of them older adults, in plain language (6th-grade level). " +
+    "Given the ALERT and the VERDICT from an analysis system, write 2–3 short sentences that say what the verdict means, why, and what the person should do now " +
+    "(e.g. follow the official alert and local officials; never pay, share personal data or forward a suspicious message; check weather.gov or miamidade.gov). " +
+    "Do not change the verdict. Write `en` in English and `es` in natural Latin American Spanish (not a literal translation). " +
+    "Also translate the reasons into Spanish as `reasons_es` (same order, short).\n\n" +
+    `ALERT:\n"""${alertText}"""\n\nVERDICT:\n${JSON.stringify(verdict)}`;
+  const schema = {
+    type: "object",
+    properties: {
+      en: { type: "string" },
+      es: { type: "string" },
+      reasons_es: { type: "array", items: { type: "string" } },
+    },
+    required: ["en", "es", "reasons_es"],
+  };
+  const viaPrune = await generateJsonViaPrune<Explanation>(prompt, schema, "explanation");
+  if (viaPrune) return { ...viaPrune.data, source: "gemini", prune: viaPrune.receipt };
+  const e = await generateJson<Explanation>([{ text: prompt }], schema);
+  return { ...e, source: "gemini" };
 }
