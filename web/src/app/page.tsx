@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 import { classifyOffline, loadOfficialAlerts, saveOfficialAlerts } from "@/lib/offlineClassifier";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8787";
+// Sin NEXT_PUBLIC_API_URL en producción no hay backend: se usa solo el modo sin conexión.
+const API: string | null =
+  process.env.NEXT_PUBLIC_API_URL ?? (process.env.NODE_ENV === "development" ? "http://localhost:8787" : null);
+const VERIFY_TIMEOUT_MS = 20000; // el enjambre tarda ~7–10 s
+const ALERTS_TIMEOUT_MS = 5000;
 
 type Result = {
   label: "verified" | "suspicious" | "unverified";
@@ -30,16 +34,23 @@ export default function Home() {
 
   // Con red: guardar las últimas alertas oficiales en el dispositivo
   useEffect(() => {
-    fetch(`${API}/alerts`).then((r) => r.json()).then(saveOfficialAlerts).catch(() => {});
+    if (!API) return;
+    fetch(`${API}/alerts`, { signal: AbortSignal.timeout(ALERTS_TIMEOUT_MS) })
+      .then((r) => r.json())
+      .then(saveOfficialAlerts)
+      .catch(() => {});
   }, []);
 
   async function verify() {
     setLoading(true); setError(null); setResult(null);
     try {
+      // Sin backend o sin red: directo al clasificador local, sin esperar
+      if (!API || !navigator.onLine) throw new Error("offline");
       const r = await fetch(`${API}/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
+        signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
       });
       if (!r.ok) throw new Error((await r.json()).error ?? r.statusText);
       setResult(await r.json());

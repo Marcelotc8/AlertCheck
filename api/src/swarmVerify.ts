@@ -48,7 +48,7 @@ export async function getOfficialAlerts(): Promise<OfficialAlert[]> {
 
 // ---------- Enjambre (definido en JSON para el reto de Swarms) ----------
 
-const MODEL = process.env.SWARMS_MODEL ?? "gpt-4o-mini";
+const MODEL = process.env.SWARMS_MODEL ?? "gpt-4.1-mini";
 
 const agent = (agent_name: string, description: string, system_prompt: string) => ({
   agent_name,
@@ -121,11 +121,11 @@ export async function verifyAlert(alertText: string, officialOverride?: Official
   if (!res.ok) throw new Error(`Swarms ${res.status}: ${await res.text()}`);
   const data = (await res.json()) as any;
 
-  // TODO (paso 2 del plan): ajustar estas dos líneas tras imprimir la respuesta real de Swarms.
-  const lastOutput: string = JSON.stringify(Array.isArray(data.output) ? data.output.at(-1) : data.output ?? "");
+  // Respuesta real de Swarms: output = [{ role: agent_name, content: string }, ...]; el Judge es el último.
+  const judge = (data.output as { role: string; content: string }[]).find((o) => o.role === "Judge") ?? data.output.at(-1);
   const cost: number | null = data.usage?.billing_info?.total_cost ?? data.usage?.total_cost ?? null;
 
-  const verdict = extractJson(lastOutput.replace(/\\"/g, '"').replace(/\\n/g, " ")) ?? {};
+  const verdict = extractJson(String(judge?.content ?? "")) ?? {};
   const label = (["verified", "suspicious", "unverified"].includes(verdict.label as string)
     ? verdict.label
     : "unverified") as Label;
