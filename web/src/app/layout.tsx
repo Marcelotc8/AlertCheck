@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import RegisterSW from "./RegisterSW";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,7 +16,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "StormCheck",
   description: "Verify hurricane alerts — verified, suspicious or unverified",
+  applicationName: "StormCheck",
+  appleWebApp: { capable: true, title: "StormCheck", statusBarStyle: "black-translucent" },
+  icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
 };
+
+export const viewport: Viewport = { themeColor: "#0f172a" };
 
 export default function RootLayout({
   children,
@@ -28,6 +34,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <RegisterSW />
       </body>
     </html>
   );
