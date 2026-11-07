@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth0 } from "@auth0/auth0-react";
 import { API, loadLang, saveLang, type Lang } from "@/lib/config";
-import AuthButton from "../AuthButton";
+import Header from "../Header";
 
 type Check = {
   id: string;
@@ -19,9 +19,9 @@ type Check = {
 };
 
 const STYLE = {
-  verified: { cls: "bg-green-600", en: "Verified", es: "Verificada" },
-  suspicious: { cls: "bg-amber-500", en: "Suspicious", es: "Sospechosa" },
-  unverified: { cls: "bg-gray-500", en: "Unverified", es: "No verificada" },
+  verified: { cls: "bg-green-700", en: "Verified", es: "Verificada" },
+  suspicious: { cls: "bg-amber-700", en: "Suspicious", es: "Sospechosa" },
+  unverified: { cls: "bg-slate-600", en: "Unverified", es: "No verificada" },
 };
 
 const T = {
@@ -75,64 +75,59 @@ export default function History() {
   const date = (iso: string) =>
     new Date(iso).toLocaleString(lang === "es" ? "es-US" : "en-US", { dateStyle: "medium", timeStyle: "short" });
 
+  function toggleLang() {
+    const next = lang === "en" ? "es" : "en";
+    setLang(next);
+    saveLang(next);
+  }
+
   return (
-    <main className="mx-auto max-w-xl p-4 sm:p-8 space-y-6">
-      <header className="flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">{T.title[lang]}</h1>
-        <div className="flex items-center gap-2">
-          <AuthButton lang={lang} returnTo="/history" showHistory={false} />
-          <button
-            onClick={() => {
-              const next = lang === "en" ? "es" : "en";
-              setLang(next);
-              saveLang(next);
-            }}
-            className="rounded border px-3 py-1 text-sm"
-          >
-            {lang === "en" ? "Español" : "English"}
-          </button>
-        </div>
-      </header>
+    <>
+      <Header lang={lang} onToggleLang={toggleLang} returnTo="/history" showHistory={false} />
+      <main className="mx-auto max-w-xl px-4 py-6 space-y-5">
+        <Link href="/" className="inline-block text-sm underline text-muted">{T.back[lang]}</Link>
+        <section className="space-y-2">
+          <h1 className="text-2xl font-bold">{T.title[lang]}</h1>
+          <p className="text-[15px] text-muted leading-relaxed">{T.intro[lang]}</p>
+        </section>
 
-      <Link href="/" className="text-sm underline">{T.back[lang]}</Link>
-      <p className="text-sm opacity-80">{T.intro[lang]}</p>
+        {isLoading && <p className="text-sm text-muted">{T.loading[lang]}</p>}
+        {!isLoading && !isAuthenticated && <p className="rounded-xl border border-line bg-surface p-4">{T.signIn[lang]}</p>}
+        {error && <p role="alert" className="rounded-lg border border-red-600/50 bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-700 dark:text-red-300">{error}</p>}
+        {isAuthenticated && !checks && !error && <p className="text-sm text-muted">{T.loading[lang]}</p>}
+        {checks && checks.length === 0 && <p className="rounded-xl border border-line bg-surface p-4">{T.empty[lang]}</p>}
 
-      {isLoading && <p className="text-sm opacity-70">{T.loading[lang]}</p>}
-      {!isLoading && !isAuthenticated && <p className="text-sm">{T.signIn[lang]}</p>}
-      {error && <p role="alert" className="text-red-600 text-sm">{error}</p>}
-      {isAuthenticated && !checks && !error && <p className="text-sm opacity-70">{T.loading[lang]}</p>}
-      {checks && checks.length === 0 && <p className="text-sm">{T.empty[lang]}</p>}
-
-      {checks && checks.length > 0 && (
-        <>
-          <div className="flex flex-wrap gap-2 text-sm">
-            <span className="opacity-70">{checks.length} {checks.length === 1 ? T.summaryOne[lang] : T.summary[lang]}:</span>
-            {(Object.keys(STYLE) as Check["label"][]).filter((l) => counts[l]).map((l) => (
-              <span key={l} className={`rounded px-2 py-0.5 text-white ${STYLE[l].cls}`}>
-                {STYLE[l][lang]} · {counts[l]}
-              </span>
-            ))}
-          </div>
-          <ul className="space-y-3">
-            {checks.map((c) => {
-              const reasons = lang === "es" && c.reasons_es?.length ? c.reasons_es : c.reasons;
-              return (
-                <li key={c.id} className="rounded-lg border p-3 space-y-2">
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className={`rounded px-2 py-0.5 font-bold text-white ${STYLE[c.label].cls}`}>{STYLE[c.label][lang]}</span>
-                    <span className="opacity-70">{Math.round(c.confidence * 100)}%</span>
-                    <span className="opacity-60">{date(c.created_at)}</span>
-                    {c.source === "image" && <span className="text-xs rounded border px-1.5">📷 {T.screenshot[lang]}</span>}
-                    {c.demo && <span className="text-xs rounded border px-1.5">demo</span>}
-                  </div>
-                  <p className="text-sm line-clamp-3 whitespace-pre-wrap">{c.text}</p>
-                  {reasons?.[0] && <p className="text-xs opacity-70">• {reasons[0]}</p>}
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      )}
-    </main>
+        {checks && checks.length > 0 && (
+          <>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-muted">{checks.length} {checks.length === 1 ? T.summaryOne[lang] : T.summary[lang]}:</span>
+              {(Object.keys(STYLE) as Check["label"][]).filter((l) => counts[l]).map((l) => (
+                <span key={l} className={`rounded-md px-2 py-0.5 font-medium text-white ${STYLE[l].cls}`}>
+                  {STYLE[l][lang]} · {counts[l]}
+                </span>
+              ))}
+            </div>
+            <ul className="space-y-3">
+              {checks.map((c) => {
+                const reasons = lang === "es" && c.reasons_es?.length ? c.reasons_es : c.reasons;
+                return (
+                  <li key={c.id} className="rounded-xl border border-line bg-surface p-4 space-y-2 shadow-sm">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <span className={`rounded-md px-2 py-0.5 font-bold text-white ${STYLE[c.label].cls}`}>{STYLE[c.label][lang]}</span>
+                      <span className="text-muted">{Math.round(c.confidence * 100)}%</span>
+                      <span className="text-muted">{date(c.created_at)}</span>
+                      {c.source === "image" && <span className="rounded border border-line px-1.5 text-xs">📷 {T.screenshot[lang]}</span>}
+                      {c.demo && <span className="rounded border border-line px-1.5 text-xs">demo</span>}
+                    </div>
+                    <p className="line-clamp-3 whitespace-pre-wrap text-[15px]">{c.text}</p>
+                    {reasons?.[0] && <p className="text-sm text-muted">• {reasons[0]}</p>}
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+      </main>
+    </>
   );
 }

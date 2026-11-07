@@ -5,10 +5,12 @@ import { useAuth0 } from "@auth0/auth0-react";
 import type { Lang } from "@/lib/config";
 
 const T = {
-  login: { en: "Sign in", es: "Iniciar sesión" },
-  logout: { en: "Sign out", es: "Cerrar sesión" },
-  history: { en: "My history", es: "Mi historial" },
+  login: { en: "Sign in", es: "Entrar" },
+  logout: { en: "Sign out", es: "Salir" },
+  history: { en: "History", es: "Historial" },
 };
+
+const btn = "min-h-9 rounded-md border border-white/40 px-2.5 text-sm font-medium hover:bg-white/10 inline-flex items-center";
 
 /** Botón de sesión + enlace a "Mi historial" (para voluntarios y refugios). */
 export default function AuthButton({ lang, returnTo = "/", showHistory = true }: { lang: Lang; returnTo?: string; showHistory?: boolean }) {
@@ -17,24 +19,21 @@ export default function AuthButton({ lang, returnTo = "/", showHistory = true }:
 
   if (!isAuthenticated) {
     return (
-      <button onClick={() => loginWithRedirect({ appState: { returnTo } })} className="rounded border px-3 py-1 text-sm">
+      <button onClick={() => loginWithRedirect({ appState: { returnTo } })} className={btn}>
         {T.login[lang]}
       </button>
     );
   }
   return (
-    <div className="flex items-center gap-2 text-sm">
+    <>
       {showHistory && (
-        <Link href="/history" className="underline" title={user?.email}>
+        <Link href="/history" className={btn} title={user?.email}>
           {T.history[lang]}
         </Link>
       )}
-      <button
-        onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
-        className="rounded border px-3 py-1"
-      >
+      <button onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })} className={btn}>
         {T.logout[lang]}
       </button>
-    </div>
+    </>
   );
 }
