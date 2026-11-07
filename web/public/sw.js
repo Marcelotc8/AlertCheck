@@ -1,6 +1,6 @@
 // StormCheck service worker: guarda la app en el dispositivo para que abra sin conexión.
 // Solo cachea recursos del mismo origen; las llamadas a la API (otro origen) pasan directo a la red.
-const VERSION = "stormcheck-v1";
+const VERSION = "stormcheck-v2";
 const SHELL = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -39,15 +39,19 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   // Páginas: red primero (siempre la versión más nueva), caché si no hay red.
+  // Se guarda por ruta (sin ?code=&state= del login), y si una ruta nunca se visitó se usa la portada.
   if (req.mode === "navigate") {
+    const key = url.pathname;
     event.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(VERSION).then((c) => c.put("/", copy));
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(VERSION).then((c) => c.put(key, copy));
+          }
           return res;
         })
-        .catch(() => caches.match("/"))
+        .catch(() => caches.match(key).then((hit) => hit || caches.match("/")))
     );
     return;
   }

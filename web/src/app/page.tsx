@@ -1,20 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useAuth0 } from "@auth0/auth0-react";
 import { classifyOffline, loadOfficialAlerts, saveOfficialAlerts } from "@/lib/offlineClassifier";
 import DEMO_OFFICIAL from "@/lib/demo-official.json";
-
-// Modo demo: avisos oficiales archivados del Huracán Milton (9 oct 2024) en lugar de las alertas en vivo.
-const DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
-
-// Sin NEXT_PUBLIC_API_URL en producción no hay backend: se usa solo el modo sin conexión.
-const API: string | null =
-  process.env.NEXT_PUBLIC_API_URL ?? (process.env.NODE_ENV === "development" ? "http://localhost:8787" : null);
+import { API, DEMO, loadLang, saveLang, type Lang } from "@/lib/config";
+import AuthButton from "./AuthButton";
 const VERIFY_TIMEOUT_MS = 60000; // enjambre (~8 s) + Gemini (captura y explicación, con reintentos)
 const ALERTS_TIMEOUT_MS = 5000;
 const MAX_IMAGE_PX = 1600;
 
-type Lang = "en" | "es";
 type Result = {
   label: "verified" | "suspicious" | "unverified";
   confidence: number;
@@ -25,6 +20,8 @@ type Result = {
   text?: string;
   extracted?: { text: string; channel: string; sender: string } | null;
   explanation?: { en: string; es: string; reasons_es: string[] } | null;
+  saved?: boolean;
+  signedIn?: boolean;
 };
 
 const STYLE = {
@@ -42,6 +39,7 @@ const T = {
   checking: { en: "Checking…", es: "Verificando…" },
   offline: { en: "Offline analysis", es: "Análisis sin conexión" },
   readFromImage: { en: "Text read from the screenshot", es: "Texto leído de la captura" },
+  savedToHistory: { en: "Saved to your history", es: "Guardado en tu historial" },
   imageOffline: {
     en: "Screenshots can only be read with a connection. Paste the text of the message instead.",
     es: "Las capturas solo se pueden leer con conexión. Pega el texto del mensaje.",
@@ -68,6 +66,14 @@ export default function Home() {
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { isAuthenticated, getAccessTokenSilently } = useAuth0();
+
+  useEffect(() => setLang(loadLang()), []);
+  function toggleLang() {
+    const next = lang === "en" ? "es" : "en";
+    setLang(next);
+    saveLang(next);
+  }
 
   // Con red: guardar las últimas alertas oficiales en el dispositivo
   useEffect(() => {
@@ -100,9 +106,15 @@ export default function Home() {
     try {
       // Sin backend o sin red: directo al clasificador local, sin esperar
       if (!online) throw new Error("offline");
+      // Con sesión iniciada, el token de Auth0 permite guardar la verificación en "Mi historial"
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (isAuthenticated) {
+        const token = await getAccessTokenSilently().catch(() => null);
+        if (token) headers.Authorization = `Bearer ${token}`;
+      }
       const r = await fetch(`${API}/verify`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ text, image: image && { data: image.data, mimeType: image.mimeType }, demo: DEMO }),
         signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
       });
@@ -133,9 +145,12 @@ export default function Home() {
     <main className="mx-auto max-w-xl p-4 sm:p-8 space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">StormCheck</h1>
-        <button onClick={() => setLang(lang === "en" ? "es" : "en")} className="rounded border px-3 py-1 text-sm">
-          {lang === "en" ? "Español" : "English"}
-        </button>
+        <div className="flex items-center gap-2">
+          <AuthButton lang={lang} />
+          <button onClick={toggleLang} className="rounded border px-3 py-1 text-sm">
+            {lang === "en" ? "Español" : "English"}
+          </button>
+        </div>
       </header>
 
       <p className="text-sm opacity-80">{T.intro[lang]}</p>
@@ -204,9 +219,10 @@ export default function Home() {
               <p className="mt-2 whitespace-pre-wrap rounded bg-black/5 p-2">{result.extracted.text}</p>
             </details>
           )}
-          {typeof result.cost === "number" && (
-            <p className="text-xs opacity-60">Swarms cost: ${result.cost.toFixed(4)}</p>
-          )}
+          <div className="flex flex-wrap gap-x-4 text-xs opacity-60">
+            {typeof result.cost === "number" && <span>Swarms cost: ${result.cost.toFixed(4)}</span>}
+            {result.saved && result.signedIn && <span>✓ {T.savedToHistory[lang]}</span>}
+          </div>
         </section>
       )}
     </main>

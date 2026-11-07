@@ -5,11 +5,13 @@ import { bodyLimit } from "hono/body-limit";
 import { getOfficialAlerts, verifyAlert, SWARM_AGENTS } from "./swarmVerify.js";
 import { extractAlertFromImage, explainVerdict, templateExplanation, type ExtractedAlert } from "./gemini.js";
 import { DEMO_ALERTS, DEMO_OFFICIAL, demoForced } from "./demo.js";
+import { dbEnabled, listChecks, saveCheck, stats24h } from "./db.js";
+import { userFromAuthHeader } from "./auth.js";
 
 const app = new Hono();
 app.use("*", cors());
 
-app.get("/", (c) => c.json({ ok: true, service: "stormcheck-api" }));
+app.get("/", (c) => c.json({ ok: true, service: "stormcheck-api", db: dbEnabled() }));
 
 // Alertas oficiales actuales (el frontend las guarda para el modo sin conexión)
 app.get("/alerts", async (c) =>
@@ -59,11 +61,42 @@ app.post("/verify", bodyLimit({ maxSize: 8 * 1024 * 1024, onError: (c) => c.json
     const demo = body.demo || demoForced();
     const verdict = await verifyAlert(text, demo ? DEMO_OFFICIAL : undefined);
     // Explicación bilingüe con Gemini; si falla, plantilla + razones en español del Judge
-    const explanation = await explainVerdict(text, verdict).catch((e: Error) => {
-      console.warn("explainVerdict:", e.message);
-      return templateExplanation(verdict);
+    const [explanation, userId] = await Promise.all([
+      explainVerdict(text, verdict).catch((e: Error) => {
+        console.warn("explainVerdict:", e.message);
+        return templateExplanation(verdict);
+      }),
+      userFromAuthHeader(c.req.header("Authorization")),
+    ]);
+    // Historial en Tiger Data (no bloquea la respuesta; si falla, solo se registra en el log)
+    void saveCheck(verdict, {
+      text,
+      userId,
+      source: body.image ? "image" : "text",
+      demo,
+      reasonsEs: explanation.reasons_es,
     });
-    return c.json({ ...verdict, demo, text, extracted, explanation });
+    return c.json({ ...verdict, demo, text, extracted, explanation, saved: dbEnabled(), signedIn: !!userId });
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 502);
+  }
+});
+
+// "Mi historial": verificaciones del usuario que inició sesión con Auth0
+app.get("/history", async (c) => {
+  const userId = await userFromAuthHeader(c.req.header("Authorization"));
+  if (!userId) return c.json({ error: "Inicia sesión para ver tu historial" }, 401);
+  try {
+    return c.json(await listChecks(userId));
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 502);
+  }
+});
+
+// Totales por hora y etiqueta de las últimas 24 h (time_bucket de TimescaleDB), para el demo
+app.get("/stats", async (c) => {
+  try {
+    return c.json(await stats24h());
   } catch (e) {
     return c.json({ error: (e as Error).message }, 502);
   }
