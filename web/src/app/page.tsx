@@ -20,6 +20,7 @@ type Result = {
   matchedAlert: { event: string; areaDesc: string; headline?: string } | null;
   cost?: number | null;
   offline?: boolean;
+  limited?: boolean; // la API respondió 429 (límite anti-abuso): se analizó en el dispositivo con reglas
   text?: string;
   extracted?: { text: string; channel: string; sender: string } | null;
   explanation?: { en: string; es: string; reasons_es: string[]; prune?: { cacheHit: boolean; costUsd: number } } | null;
@@ -67,6 +68,10 @@ const T = {
   offlineNote: {
     en: "No connection: checked on your device against the last official alerts it saved.",
     es: "Sin conexión: revisado en tu dispositivo con las últimas alertas oficiales guardadas.",
+  },
+  limitedNote: {
+    en: "The AI check is busy right now, so this was checked on your device with our safety rules.",
+    es: "El análisis con IA está ocupado en este momento: se revisó en tu dispositivo con nuestras reglas de seguridad.",
   },
   status: { en: "Offline mode — still works", es: "Sin conexión — sigue funcionando" },
   readFromImage: { en: "Text read from the screenshot", es: "Texto leído de la captura" },
@@ -216,6 +221,10 @@ export default function Home() {
         setError(data.error ?? r.statusText);
         return;
       }
+      if (r.status === 429 && text.trim()) {
+        setResult({ ...classifyOffline(text, loadOfficialAlerts(), { ignoreExpiry: DEMO }), limited: true });
+        return;
+      }
       if (!r.ok) throw new Error(data.error ?? r.statusText);
       setResult(data);
     } catch {
@@ -348,7 +357,7 @@ export default function Home() {
               </div>
             )}
 
-            {result.offline && <p className="text-xs text-muted">{T.offlineNote[lang]}</p>}
+            {result.offline && <p className="text-xs text-muted">{result.limited ? T.limitedNote[lang] : T.offlineNote[lang]}</p>}
 
             {result.extracted?.text && (
               <details className="text-sm">

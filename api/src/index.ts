@@ -2,8 +2,11 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
-import { getOfficialAlerts, verifyAlert, SWARM_AGENTS } from "./swarmVerify.js";
-import { extractAlertFromImage, explainVerdict, templateExplanation, type ExtractedAlert } from "./gemini.js";
+import { getConnInfo } from "@hono/node-server/conninfo";
+import { getOfficialAlerts, SWARM_AGENTS } from "./swarmVerify.js";
+import { extractAlertFromImage, type ExtractedAlert } from "./gemini.js";
+import { checkAlert } from "./check.js";
+import { allowRequest, budgetLeft, recordSpend } from "./limits.js";
 import { DEMO_ALERTS, DEMO_OFFICIAL, demoForced } from "./demo.js";
 import { dbEnabled, listChecks, saveCheck, stats24h } from "./db.js";
 import { userFromAuthHeader } from "./auth.js";
@@ -24,12 +27,28 @@ app.get("/demo", (c) => c.json(DEMO_ALERTS));
 // Definición del enjambre (para mostrar en el demo / Devpost)
 app.get("/swarm", (c) => c.json(SWARM_AGENTS));
 
+// IP real del cliente: Caddy la pone en X-Forwarded-For (descarta la que mande el cliente); si no, la del socket.
+function clientIp(c: Parameters<typeof getConnInfo>[0]): string {
+  const xff = c.req.header("X-Forwarded-For")?.split(",").at(-1)?.trim();
+  return xff || getConnInfo(c).remote.address || "unknown";
+}
+
 const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/heic", "image/heif"]);
 
 app.post("/verify", bodyLimit({ maxSize: 8 * 1024 * 1024, onError: (c) => c.json({ error: "Imagen demasiado grande (máx. 8 MB)" }, 413) }), async (c) => {
   type Body = { text?: string; image?: { data: string; mimeType: string }; mock?: boolean; demo?: boolean };
   const body = await c.req.json<Body>().catch(() => ({}) as Body);
   let text = body.text?.trim() ?? "";
+
+  // Anti "denegación de billetera": límite por IP y tope diario de gasto. Responde 429 y la web cae sola
+  // al análisis local con reglas (el mismo del modo sin conexión), así el servicio no se cae.
+  const limit = allowRequest(clientIp(c));
+  if (!limit.ok) {
+    c.header("Retry-After", String(limit.retryAfterSec));
+    return c.json({ error: "Demasiadas verificaciones seguidas. Espera un momento.", limited: true }, 429);
+  }
+  if (budgetLeft() <= 0) return c.json({ error: "Límite diario de análisis con IA alcanzado.", limited: true }, 429);
+
   let extracted: ExtractedAlert | null = null;
 
   // Captura de pantalla → Gemini extrae el texto de la alerta
@@ -37,6 +56,7 @@ app.post("/verify", bodyLimit({ maxSize: 8 * 1024 * 1024, onError: (c) => c.json
     if (!IMAGE_TYPES.has(body.image.mimeType)) return c.json({ error: `Formato no soportado: ${body.image.mimeType}` }, 400);
     try {
       extracted = await extractAlertFromImage(body.image.data, body.image.mimeType);
+      recordSpend(0.002); // estimado por captura (Gemini Flash), para el tope diario
     } catch (e) {
       return c.json({ error: `No se pudo leer la captura: ${(e as Error).message}` }, 502);
     }
@@ -59,15 +79,12 @@ app.post("/verify", bodyLimit({ maxSize: 8 * 1024 * 1024, onError: (c) => c.json
 
   try {
     const demo = body.demo || demoForced();
-    const verdict = await verifyAlert(text, demo ? DEMO_OFFICIAL : undefined);
-    // Explicación bilingüe con Gemini; si falla, plantilla + razones en español del Judge
-    const [explanation, userId] = await Promise.all([
-      explainVerdict(text, verdict).catch((e: Error) => {
-        console.warn("explainVerdict:", e.message);
-        return templateExplanation(verdict);
-      }),
+    const [verdict, userId] = await Promise.all([
+      checkAlert(text, demo ? DEMO_OFFICIAL : undefined),
       userFromAuthHeader(c.req.header("Authorization")),
     ]);
+    recordSpend(verdict.cost ?? 0);
+    const { explanation } = verdict;
     // Historial en Tiger Data (no bloquea la respuesta; si falla, solo se registra en el log)
     void saveCheck(verdict, {
       text,

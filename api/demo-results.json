@@ -7,11 +7,11 @@
     "text": "Hurricane Milton Advisory Number 17. NWS National Hurricane Center Miami FL. 400 AM CDT Wed Oct 09 2024. ...MILTON REMAINS A CATASTROPHIC CATEGORY 5 HURRICANE... A Tropical Storm Warning is in effect for the Florida Keys, including Dry Tortugas and Florida Bay, and for the Florida east coast south of the St. Lucie/Martin County Line to Flamingo. A Hurricane Watch is in effect for the Dry Tortugas.",
     "got": "verified",
     "confidence": 1,
-    "cost": 0.044855,
+    "cost": 0.04418,
     "reasons": [
-      "Matches official NWS Hurricane Milton Advisory Number 17",
-      "Consistent hazard type, affected areas, and timing",
-      "No scam signals or inconsistent instructions detected"
+      "Matches official NWS advisory 17 for Hurricane Milton",
+      "Warnings and areas are consistent with official alert",
+      "No requests for money or personal data present"
     ],
     "matched": "demo-nhc-advisory-17",
     "overridden": null
@@ -23,12 +23,12 @@
     "source": "NWS Miami HLSMFL Advisory 18",
     "text": "Hurricane Milton Local Statement Advisory Number 18, National Weather Service Miami FL, 1141 AM EDT Wed Oct 9 2024. TORNADIC SUPERCELLS FROM MILTON BEGINNING TO SWEEP ACROSS THE SOUTHERN FLORIDA PENINSULA. A Tropical Storm Warning is in effect for Coastal Broward County, Coastal Miami Dade County, Inland Broward County, Inland Miami-Dade County, Metro Broward County and Metropolitan Miami Dade. Tropical storm force winds are expected across the Atlantic Coast, especially in Milton's rainbands.",
     "got": "verified",
-    "confidence": 1,
-    "cost": 0.044016,
+    "confidence": 0.95,
+    "cost": 0.043138,
     "reasons": [
       "Matches official Tropical Storm Warning issued by NWS Miami FL at the same time",
-      "Areas and hazard type align with official alert",
-      "No scam signals or requests for money/personal data detected"
+      "No scam signals detected such as requests for money or personal data",
+      "Hazard types and affected areas align with official alert details"
     ],
     "matched": "demo-ts-warning-mfl",
     "overridden": null
@@ -41,11 +41,11 @@
     "text": "Hurricane Milton Local Statement Advisory Number 18, National Weather Service Key West FL, 1218 PM EDT Wed Oct 9 2024. TROPICAL STORM FORCE WIND GUSTS ONGOING ACROSS THE FLORIDA KEYS. A Tropical Storm Warning is in effect for Monroe Lower Keys, Monroe Middle Keys, and Monroe Upper Keys. Thundery squalls with local wind gusts of 55 to 65 mph will be possible today through Thursday morning.",
     "got": "verified",
     "confidence": 1,
-    "cost": 0.042751,
+    "cost": 0.043297,
     "reasons": [
-      "Matches official NWS Tropical Storm Warning alert",
-      "Issued by the correct agency at the correct time",
-      "No scam signals or requests for money/personal data"
+      "Matches official NWS alert demo-ts-warning-key exactly",
+      "No scam signals or requests for money or personal data",
+      "Consistent hazard type, area, and timing with official advisory"
     ],
     "matched": "demo-ts-warning-key",
     "overridden": null
@@ -58,11 +58,11 @@
     "text": "Tornado Warning. National Weather Service Miami FL, 747 AM EDT Wed Oct 9 2024. Tornado Warning for Northern Miami-Dade County, Southern Broward County, Northern Mainland Monroe County and Southeastern Collier County until 815 AM EDT. A severe thunderstorm capable of producing a tornado was located near Dade-Collier Training Airport, moving north at 35 mph. TAKE COVER NOW! Move to an interior room on the lowest floor of a sturdy building.",
     "got": "verified",
     "confidence": 1,
-    "cost": 0.042543,
+    "cost": 0.043217,
     "reasons": [
-      "Matches official NWS tornado warning alert",
-      "No scam signals detected",
-      "Instructions align with official alert without extra requests"
+      "Matches official NWS Tornado Warning alert exactly",
+      "Hazard type, areas, issuing agency, and times are consistent",
+      "No scam signals or suspicious requests present"
     ],
     "matched": "demo-tor-0043",
     "overridden": null
@@ -74,12 +74,12 @@
     "source": "NWS Miami HLSMFL Advisory 18 (storm surge)",
     "text": "NWS Miami: A Storm Surge Warning is in effect for Mainland Monroe. 3 to 5 feet of storm surge are possible over portions of Mainland Monroe County this afternoon into Thursday as Hurricane Milton passes. Follow instructions from local officials.",
     "got": "verified",
-    "confidence": 1,
-    "cost": 0.042393,
+    "confidence": 0.95,
+    "cost": 0.042906,
     "reasons": [
-      "Matches official NWS Miami Storm Surge Warning for Mainland Monroe.",
-      "No scam signals detected in the alert message.",
-      "Alert content is consistent with official alert details and instructions."
+      "Matches official NWS Storm Surge Warning for Mainland Monroe",
+      "Issued by credible agency NWS Miami with correct timing",
+      "No scam signals or contradictory information present"
     ],
     "matched": "demo-ss-warning-monroe",
     "overridden": null
@@ -92,11 +92,11 @@
     "text": "ORDEN DE EVACUACIÓN OBLIGATORIA - Miami-Dade Emergency Management. Huracán Milton: todos los residentes de la Zona A deben evacuar antes de las 6 PM. Reserva tu lugar en el refugio pagando $35 en https://miamidade-evac.com/pay o perderás tu espacio.",
     "got": "suspicious",
     "confidence": 0.95,
-    "cost": 0.043112,
+    "cost": 0.043463,
     "reasons": [
-      "Requests payment for shelter reservation, which official alerts never do",
-      "Uses a non-official URL instead of a .gov domain",
-      "No official evacuation order includes payment or reservation requirements"
+      "Requests payment for evacuation shelter, which official alerts never do.",
+      "Link is not an official government domain, indicating potential scam.",
+      "No official alert matches the mandatory evacuation or payment request described."
     ],
     "matched": null,
     "overridden": null
@@ -109,11 +109,11 @@
     "text": "FEMA ALERT: Residents of Broward County affected by Hurricane Milton qualify for $750 in immediate disaster assistance. To receive your payment today, verify your identity by replying with your full name, date of birth, Social Security number and bank account number.",
     "got": "suspicious",
     "confidence": 0.95,
-    "cost": 0.042755,
+    "cost": 0.043292,
     "reasons": [
-      "Requests sensitive personal and bank information",
-      "Claims immediate payment which is not standard in official alerts",
-      "No official alert matches this request or authorizes such data collection"
+      "Requests sensitive personal and bank information, which official alerts never do",
+      "Claims FEMA disaster assistance payment not mentioned in official alerts",
+      "Urgent call to reply with personal data contradicts official communication protocols"
     ],
     "matched": null,
     "overridden": null
@@ -126,11 +126,11 @@
     "text": "‼️ MUY IMPORTANTE ‼️ Me lo pasó un primo que trabaja en el condado: mañana a las 3 AM van a cortar el agua y la luz en TODO Miami-Dade por 72 horas por el huracán Milton. Llenen las bañeras y saquen efectivo YA. Reenvía esto a todos tus grupos 🙏🙏",
     "got": "suspicious",
     "confidence": 0.9,
-    "cost": 0.043154,
+    "cost": 0.04326,
     "reasons": [
-      "No official alert confirms the water and power outage at the specified time.",
-      "Message uses chain-message language asking to forward to groups.",
-      "Instructions to fill bathtubs and withdraw cash are not part of official alerts."
+      "No official alert matches the claimed water and power outage.",
+      "Message uses chain-message language urging forwarding to groups.",
+      "Source is unverifiable and instructions are not confirmed by authorities."
     ],
     "matched": null,
     "overridden": null
@@ -143,11 +143,11 @@
     "text": "NWS ALERT: A HURRICANE WARNING has been issued for Metropolitan Miami-Dade and Broward. Category 5 winds expected in Miami tonight. Check if your street must evacuate now: bit.ly/nws-miami-zone",
     "got": "suspicious",
     "confidence": 0.9,
-    "cost": 0.043093,
+    "cost": 0.043242,
     "reasons": [
-      "No matching official Hurricane Warning for the specified areas found.",
-      "Use of a shortened link is not typical for official alerts and raises suspicion.",
-      "Evacuation instructions via a shortened link contradict official alert practices."
+      "No official Hurricane Warning matches the claimed areas in the untrusted message",
+      "Use of a shortened link instead of an official .gov domain raises suspicion",
+      "Evacuation instructions and Category 5 wind claims are not present in official alerts"
     ],
     "matched": null,
     "overridden": null
@@ -160,13 +160,13 @@
     "text": "Monroe County opened a new emergency shelter for Hurricane Milton at the Key Largo Marina Hotel ballroom, pets and RVs welcome, no ID needed. Spots are limited: text your name, address and number of people to 305-555-0142 to be added to the list.",
     "got": "suspicious",
     "confidence": 0.9,
-    "cost": 0.043094,
+    "cost": 0.043268,
     "reasons": [
-      "Requests personal data via text, which official alerts never do",
-      "Includes shelter sign-up instructions not found in official alerts",
-      "Matches hazard area but contradicts official alert content"
+      "Requests personal data via text, which official alerts do not do",
+      "No official alert confirms shelter opening or sign-up instructions",
+      "Provides a phone number for shelter sign-up, inconsistent with official protocols"
     ],
-    "matched": "demo-ts-warning-key",
+    "matched": null,
     "overridden": null
   }
 ]

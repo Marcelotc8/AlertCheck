@@ -14,3 +14,10 @@ cd ../web && npm install && npm run dev   # http://localhost:3000
 ```
 
 Sin `SWARMS_API_KEY`, `POST /verify` devuelve una respuesta de prueba.
+
+## Seguridad
+- `api/src/scamSignals.ts`: reglas **compartidas** por la API y la web (modo sin conexión).
+- "Verificada" exige una alerta oficial real + evidencia en el texto (`swarmVerify.ts`, barandal 2).
+- Explicación segura y filtrado de teléfonos/enlaces (`check.ts`); límite por IP y tope diario (`limits.ts`).
+- `npm run redteam` (en `api/`): 8 ataques de prompt injection y evasión. `-- --rules` = solo la parte gratis.
+- Defensa ante los jueces: `docs/defensa-jueces.md`.
