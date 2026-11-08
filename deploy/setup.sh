@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Prepara un servidor Ubuntu nuevo de Vultr para la API de StormCheck.
 # Uso (como root en el servidor):
-#   curl -fsSL https://raw.githubusercontent.com/Marcelotc8/stormcheck/main/deploy/setup.sh | bash -s -- api.tudominio.com
+#   curl -fsSL https://raw.githubusercontent.com/Marcelotc8/AlertCheck/main/deploy/setup.sh | bash -s -- api.tudominio.com
 # Sin dominio todavía: deja el argumento vacío y se usa <ip>.sslip.io (HTTPS válido igual).
 # Antes o después, copia las claves:  scp api/.env root@IP:/opt/stormcheck/api/.env
 set -euo pipefail
 
-REPO="https://github.com/Marcelotc8/stormcheck.git"
+REPO="https://github.com/Marcelotc8/AlertCheck.git"
 APP_DIR="/opt/stormcheck"
 IP="$(curl -fsS4 https://api.ipify.org)"
 DOMAIN="${1:-${IP//./-}.sslip.io}"
