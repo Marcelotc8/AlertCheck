@@ -1,4 +1,5 @@
 // Clasificador sin conexión: reglas compartidas con el backend + últimas alertas oficiales guardadas en el dispositivo.
+import { areaName, eventName } from "./events";
 import { detectScamSignals, findEvidence, STRONG_SCAM_SCORE, verifiedBlockers } from "@api/scamSignals";
 
 export type Label = "verified" | "suspicious" | "unverified";
@@ -46,8 +47,8 @@ export function classifyOffline(
     label = "verified";
     confidence = 0.7;
     reasons = [
-      [`Matches saved official alert: ${matched.event}`, `Coincide con la alerta oficial guardada: ${matched.event}`],
-      [`Area: ${matched.areaDesc}`, `Zona: ${matched.areaDesc}`],
+      [`Matches saved official alert: ${matched.event}`, `Coincide con la alerta oficial guardada: ${eventName(matched.event, "es")}`],
+      [`Area: ${matched.areaDesc}`, `Zona: ${areaName(matched.areaDesc, "es")}`],
       ["No scam signals found", "No se encontraron señales de estafa"],
     ];
   } else {

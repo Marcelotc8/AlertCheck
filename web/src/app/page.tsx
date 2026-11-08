@@ -7,6 +7,9 @@ import DEMO_OFFICIAL from "@/lib/demo-official.json";
 import demoData from "@api/demoData";
 import { API, DEMO, loadLang, saveLang, type Lang } from "@/lib/config";
 import Header from "./Header";
+import { areaName, eventName } from "@/lib/events";
+
+type Msg = { en: string; es: string }; // los mensajes se guardan en los dos idiomas: cambian al tocar EN/ES
 
 const VERIFY_TIMEOUT_MS = 60000; // enjambre (~8 s) + Gemini (captura y explicación, con reintentos)
 const ALERTS_TIMEOUT_MS = 5000;
@@ -73,6 +76,8 @@ const T = {
     en: "The AI check is busy right now, so this was checked on your device with our safety rules.",
     es: "El análisis con IA está ocupado en este momento: se revisó en tu dispositivo con nuestras reglas de seguridad.",
   },
+  genericError: { en: "Something went wrong. Please try again.", es: "Algo salió mal. Intenta de nuevo." },
+  viaPrune: { en: "Gemini via Prune", es: "Gemini vía Prune" },
   status: { en: "Offline mode — still works", es: "Sin conexión — sigue funcionando" },
   readFromImage: { en: "Text read from the screenshot", es: "Texto leído de la captura" },
   savedToHistory: { en: "Saved to your history", es: "Guardado en tu historial" },
@@ -132,7 +137,7 @@ export default function Home() {
   const [step, setStep] = useState(0);
   const [online, setOnline] = useState(true);
   const [result, setResult] = useState<Result | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Msg | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLElement>(null);
   const { isAuthenticated, getAccessTokenSilently } = useAuth0();
@@ -188,7 +193,7 @@ export default function Home() {
     try {
       setImage(await toJpegBase64(file));
     } catch {
-      setError(lang === "en" ? "Could not open that image." : "No se pudo abrir esa imagen.");
+      setError({ en: "Could not open that image.", es: "No se pudo abrir esa imagen." });
     }
   }
 
@@ -218,7 +223,7 @@ export default function Home() {
       const data = await r.json().catch(() => ({}));
       // Error de la captura con el servidor disponible: mostrarlo, no inventar un veredicto
       if (!r.ok && image && !text.trim()) {
-        setError(data.error ?? r.statusText);
+        setError(data.error ? { es: data.error, en: data.error_en ?? data.error } : T.genericError);
         return;
       }
       if (r.status === 429 && text.trim()) {
@@ -229,7 +234,7 @@ export default function Home() {
       setResult(data);
     } catch {
       if (!text.trim()) {
-        setError(T.imageOffline[lang]);
+        setError(T.imageOffline);
         return;
       }
       setResult(classifyOffline(text, loadOfficialAlerts(), { ignoreExpiry: DEMO }));
@@ -325,7 +330,7 @@ export default function Home() {
           </section>
         )}
 
-        {error && <p role="alert" className="rounded-lg border border-red-600/50 bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-700 dark:text-red-300">{error}</p>}
+        {error && <p role="alert" className="rounded-lg border border-red-600/50 bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-700 dark:text-red-300">{error[lang]}</p>}
 
         {result && s && (
           <section ref={resultRef} aria-live="polite" className={`scroll-mt-4 rounded-xl border-2 p-4 space-y-3 ${s.card}`}>
@@ -353,7 +358,7 @@ export default function Home() {
             {result.matchedAlert && (
               <div className="rounded-lg border border-green-600/40 bg-surface p-3 text-sm">
                 <p className="font-semibold">🏛️ {T.official[lang]}</p>
-                <p className="mt-1">{result.matchedAlert.event} — {result.matchedAlert.areaDesc}</p>
+                <p className="mt-1">{eventName(result.matchedAlert.event, lang)} — {areaName(result.matchedAlert.areaDesc, lang)}</p>
               </div>
             )}
 
@@ -368,7 +373,7 @@ export default function Home() {
 
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
               {typeof result.cost === "number" && <span>Swarms: ${result.cost.toFixed(4)}</span>}
-              {result.explanation?.prune && <span>Gemini vía Prune: ${result.explanation.prune.costUsd.toFixed(4)}</span>}
+              {result.explanation?.prune && <span>{T.viaPrune[lang]}: ${result.explanation.prune.costUsd.toFixed(4)}</span>}
               {result.saved && result.signedIn && <span>✓ {T.savedToHistory[lang]}</span>}
             </div>
           </section>

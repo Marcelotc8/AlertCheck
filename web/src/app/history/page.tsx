@@ -35,6 +35,7 @@ const T = {
   empty: { en: "No checks yet. Verify an alert while signed in and it will show up here.", es: "Aún no hay verificaciones. Verifica una alerta con tu sesión iniciada y aparecerá aquí." },
   loading: { en: "Loading…", es: "Cargando…" },
   offline: { en: "History needs a connection.", es: "El historial necesita conexión." },
+  loadError: { en: "Could not load your history. Please try again.", es: "No se pudo cargar tu historial. Intenta de nuevo." },
   screenshot: { en: "screenshot", es: "captura" },
   summary: { en: "checks", es: "verificaciones" },
   summaryOne: { en: "check", es: "verificación" },
@@ -44,14 +45,17 @@ export default function History() {
   const [lang, setLang] = useState<Lang>("es");
   const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
   const [checks, setChecks] = useState<Check[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ en: string; es: string } | null>(null);
 
   useEffect(() => setLang(loadLang()), []);
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
     if (!API || !navigator.onLine) {
-      setError(T.offline[lang]);
+      setError(T.offline);
       return;
     }
     (async () => {
@@ -62,10 +66,13 @@ export default function History() {
           signal: AbortSignal.timeout(15000),
         });
         const data = await r.json();
-        if (!r.ok) throw new Error(data.error ?? r.statusText);
+        if (!r.ok) {
+          setError(data.error ? { es: data.error, en: data.error_en ?? data.error } : T.loadError);
+          return;
+        }
         setChecks(data);
-      } catch (e) {
-        setError((e as Error).message);
+      } catch {
+        setError(T.loadError);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -93,7 +100,7 @@ export default function History() {
 
         {isLoading && <p className="text-sm text-muted">{T.loading[lang]}</p>}
         {!isLoading && !isAuthenticated && <p className="rounded-xl border border-line bg-surface p-4">{T.signIn[lang]}</p>}
-        {error && <p role="alert" className="rounded-lg border border-red-600/50 bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-700 dark:text-red-300">{error}</p>}
+        {error && <p role="alert" className="rounded-lg border border-red-600/50 bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-700 dark:text-red-300">{error[lang]}</p>}
         {isAuthenticated && !checks && !error && <p className="text-sm text-muted">{T.loading[lang]}</p>}
         {checks && checks.length === 0 && <p className="rounded-xl border border-line bg-surface p-4">{T.empty[lang]}</p>}
 

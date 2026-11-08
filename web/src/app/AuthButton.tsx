@@ -19,7 +19,7 @@ export default function AuthButton({ lang, returnTo = "/", showHistory = true }:
 
   if (!isAuthenticated) {
     return (
-      <button onClick={() => loginWithRedirect({ appState: { returnTo } })} className={btn}>
+      <button onClick={() => loginWithRedirect({ appState: { returnTo }, authorizationParams: { ui_locales: lang } })} className={btn}>
         {T.login[lang]}
       </button>
     );

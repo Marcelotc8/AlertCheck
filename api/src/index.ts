@@ -33,9 +33,14 @@ function clientIp(c: Parameters<typeof getConnInfo>[0]): string {
   return xff || getConnInfo(c).remote.address || "unknown";
 }
 
+// Errores para el usuario en los dos idiomas: la web muestra el del idioma elegido.
+type ErrStatus = 400 | 401 | 413 | 422 | 429 | 502;
+const fail = (c: { json: (b: unknown, s: ErrStatus) => Response }, status: ErrStatus, es: string, en: string, extra: object = {}) =>
+  c.json({ error: es, error_en: en, ...extra }, status);
+
 const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/heic", "image/heif"]);
 
-app.post("/verify", bodyLimit({ maxSize: 8 * 1024 * 1024, onError: (c) => c.json({ error: "Imagen demasiado grande (máx. 8 MB)" }, 413) }), async (c) => {
+app.post("/verify", bodyLimit({ maxSize: 8 * 1024 * 1024, onError: (c) => fail(c, 413, "Imagen demasiado grande (máx. 8 MB)", "Image too large (max 8 MB)") }), async (c) => {
   type Body = { text?: string; image?: { data: string; mimeType: string }; mock?: boolean; demo?: boolean };
   const body = await c.req.json<Body>().catch(() => ({}) as Body);
   let text = body.text?.trim() ?? "";
@@ -45,25 +50,26 @@ app.post("/verify", bodyLimit({ maxSize: 8 * 1024 * 1024, onError: (c) => c.json
   const limit = allowRequest(clientIp(c));
   if (!limit.ok) {
     c.header("Retry-After", String(limit.retryAfterSec));
-    return c.json({ error: "Demasiadas verificaciones seguidas. Espera un momento.", limited: true }, 429);
+    return fail(c, 429, "Demasiadas verificaciones seguidas. Espera un momento.", "Too many checks in a row. Please wait a moment.", { limited: true });
   }
-  if (budgetLeft() <= 0) return c.json({ error: "Límite diario de análisis con IA alcanzado.", limited: true }, 429);
+  if (budgetLeft() <= 0) return fail(c, 429, "Límite diario de análisis con IA alcanzado.", "Daily AI analysis limit reached.", { limited: true });
 
   let extracted: ExtractedAlert | null = null;
 
   // Captura de pantalla → Gemini extrae el texto de la alerta
   if (body.image) {
-    if (!IMAGE_TYPES.has(body.image.mimeType)) return c.json({ error: `Formato no soportado: ${body.image.mimeType}` }, 400);
+    if (!IMAGE_TYPES.has(body.image.mimeType)) return fail(c, 400, `Formato de imagen no soportado: ${body.image.mimeType}`, `Unsupported image format: ${body.image.mimeType}`);
     try {
       extracted = await extractAlertFromImage(body.image.data, body.image.mimeType);
       recordSpend(0.002); // estimado por captura (Gemini Flash), para el tope diario
     } catch (e) {
-      return c.json({ error: `No se pudo leer la captura: ${(e as Error).message}` }, 502);
+      console.warn("captura:", (e as Error).message);
+      return fail(c, 502, "No se pudo leer la captura. Intenta de nuevo o pega el texto del mensaje.", "Could not read the screenshot. Try again or paste the message text.");
     }
     text = [text, extracted.text].filter(Boolean).join("\n\n");
-    if (!extracted.text.trim()) return c.json({ error: "No se encontró texto de alerta en la imagen", extracted }, 422);
+    if (!extracted.text.trim()) return fail(c, 422, "No se encontró texto de alerta en la imagen.", "No alert text was found in the image.", { extracted });
   }
-  if (!text) return c.json({ error: "Falta 'text' o 'image'" }, 400);
+  if (!text) return fail(c, 400, "Escribe o pega un mensaje, o sube una captura.", "Type or paste a message, or upload a screenshot.");
 
   // Respuesta de prueba (paso 1) o si aún no hay clave de Swarms
   if (body.mock || !process.env.SWARMS_API_KEY) {
@@ -102,7 +108,7 @@ app.post("/verify", bodyLimit({ maxSize: 8 * 1024 * 1024, onError: (c) => c.json
 // "Mi historial": verificaciones del usuario que inició sesión con Auth0
 app.get("/history", async (c) => {
   const userId = await userFromAuthHeader(c.req.header("Authorization"));
-  if (!userId) return c.json({ error: "Inicia sesión para ver tu historial" }, 401);
+  if (!userId) return fail(c, 401, "Inicia sesión para ver tu historial.", "Sign in to see your history.");
   try {
     return c.json(await listChecks(userId));
   } catch (e) {
