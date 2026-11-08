@@ -1,4 +1,4 @@
-# StormCheck
+# AlertCheck
 
 Recibe una alerta de huracán (texto o captura) y la etiqueta como **verificada, sospechosa o no verificada**, explicando por qué en inglés y español, incluso sin internet. SharkByte 2026.
 
