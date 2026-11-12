@@ -1,5 +1,5 @@
-// Prueba el flujo completo con capturas: Gemini lee → enjambre → explicación bilingüe.
-// Uso: npm run test:images   (backend corriendo en localhost:8787)
+// Tests the full flow with screenshots: Gemini reads → swarm → bilingual explanation.
+// Usage: npm run test:images   (backend running on localhost:8787)
 import { readFileSync, readdirSync } from "node:fs";
 
 const dir = new URL("../../demo-screenshots/", import.meta.url);
@@ -19,8 +19,8 @@ for (const f of readdirSync(dir).filter((f) => f.endsWith(".png"))) {
     console.log(`❌ ${f} (${s}s) HTTP ${r.status}: ${j.error}`);
     continue;
   }
-  console.log(`✅ ${f} (${s}s) → ${j.label} ${j.confidence} · $${j.cost} · canal=${j.extracted?.channel} · match=${j.matchedAlert?.id ?? "-"}`);
-  console.log(`   leído: ${String(j.extracted?.text).slice(0, 110)}…`);
-  console.log(`   ES: ${j.explanation?.es ?? "(sin explicación)"}`);
-  console.log(`   EN: ${j.explanation?.en ?? "(sin explicación)"}`);
+  console.log(`✅ ${f} (${s}s) → ${j.label} ${j.confidence} · $${j.cost} · channel=${j.extracted?.channel} · match=${j.matchedAlert?.id ?? "-"}`);
+  console.log(`   read: ${String(j.extracted?.text).slice(0, 110)}…`);
+  console.log(`   ES: ${j.explanation?.es ?? "(no explanation)"}`);
+  console.log(`   EN: ${j.explanation?.en ?? "(no explanation)"}`);
 }

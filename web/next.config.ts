@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Las rutas /api reutilizan el código de ../api/src (el mismo que corre en Vultr).
+  // The /api routes reuse the code in ../api/src (the same code that runs on Vultr).
   experimental: { externalDir: true },
 };
 

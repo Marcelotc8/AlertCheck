@@ -1,5 +1,5 @@
-// Corre las 10 alertas de demo contra el enjambre real y compara con la etiqueta esperada.
-// Uso: npm run demo   (cuesta ~$0.04 por alerta en Swarms)
+// Runs the 10 demo alerts against the real swarm and compares them with the expected label.
+// Usage: npm run demo   (costs ~$0.04 per alert on Swarms)
 import { writeFileSync } from "node:fs";
 import { verifyAlert } from "../src/swarmVerify.js";
 import { DEMO_ALERTS, DEMO_OFFICIAL } from "../src/demo.js";
@@ -22,9 +22,9 @@ for (const r of rows) {
   ok += pass ? 1 : 0;
   total += r.cost;
   console.log(
-    `${pass ? "✅" : "❌"} ${r.id.padEnd(7)} esperado=${r.expected.padEnd(10)} obtenido=${String(r.got).padEnd(10)} conf=${r.confidence.toFixed(2)} $${r.cost.toFixed(4)}  match=${r.matched ?? "-"}${r.overridden ? `  (barandal: enjambre dijo ${r.overridden})` : ""}`
+    `${pass ? "✅" : "❌"} ${r.id.padEnd(7)} expected=${r.expected.padEnd(10)} got=${String(r.got).padEnd(10)} conf=${r.confidence.toFixed(2)} $${r.cost.toFixed(4)}  match=${r.matched ?? "-"}${r.overridden ? `  (guardrail: swarm said ${r.overridden})` : ""}`
   );
   if (!pass) r.reasons.forEach((x) => console.log(`      · ${x}`));
 }
-console.log(`\n${ok}/${rows.length} correctas (meta: ≥8) · costo total $${total.toFixed(4)}`);
+console.log(`\n${ok}/${rows.length} correct (goal: ≥8) · total cost $${total.toFixed(4)}`);
 writeFileSync(new URL("../demo-results.json", import.meta.url), JSON.stringify(rows, null, 2));

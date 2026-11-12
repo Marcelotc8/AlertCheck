@@ -9,9 +9,9 @@ import { API, DEMO, loadLang, saveLang, type Lang } from "@/lib/config";
 import Header from "./Header";
 import { areaName, eventName } from "@/lib/events";
 
-type Msg = { en: string; es: string }; // los mensajes se guardan en los dos idiomas: cambian al tocar EN/ES
+type Msg = { en: string; es: string }; // messages are stored in both languages: they switch when tapping EN/ES
 
-const VERIFY_TIMEOUT_MS = 60000; // enjambre (~8 s) + Gemini (captura y explicación, con reintentos)
+const VERIFY_TIMEOUT_MS = 60000; // swarm (~8 s) + Gemini (screenshot and explanation, with retries)
 const ALERTS_TIMEOUT_MS = 5000;
 const MAX_IMAGE_PX = 1600;
 
@@ -23,7 +23,7 @@ type Result = {
   matchedAlert: { event: string; areaDesc: string; headline?: string } | null;
   cost?: number | null;
   offline?: boolean;
-  limited?: boolean; // la API respondió 429 (límite anti-abuso): se analizó en el dispositivo con reglas
+  limited?: boolean; // the API returned 429 (anti-abuse limit): analyzed on-device with rules
   text?: string;
   extracted?: { text: string; channel: string; sender: string } | null;
   explanation?: { en: string; es: string; reasons_es: string[]; prune?: { cacheHit: boolean; costUsd: number } } | null;
@@ -31,7 +31,7 @@ type Result = {
   signedIn?: boolean;
 };
 
-// Colores con contraste AA tanto en claro como en oscuro
+// Colors with AA contrast in both light and dark mode
 const STYLE: Record<Label, { icon: string; badge: string; card: string; en: string; es: string }> = {
   verified: {
     icon: "✓",
@@ -97,7 +97,7 @@ const T = {
   },
 };
 
-// Pasos que se muestran mientras trabaja el enjambre (≈20 s); son orientativos, el backend no los reporta.
+// Steps shown while the swarm works (≈20 s); they're indicative, the backend doesn't report them.
 const STEPS = {
   image: { en: "Reading the screenshot with Gemini…", es: "Leyendo la captura con Gemini…" },
   steps: [
@@ -117,7 +117,7 @@ const EXAMPLE_LABEL: Record<string, { en: string; es: string }> = {
   "fake-5": { en: "Fake shelter", es: "Refugio falso" },
 };
 
-/** Reduce la imagen a ≤1600 px y la pasa a JPEG base64 para no mandar fotos de varios MB. */
+/** Downscales the image to ≤1600 px and converts it to base64 JPEG to avoid sending multi-MB photos. */
 async function toJpegBase64(file: File): Promise<{ data: string; mimeType: string; preview: string }> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, MAX_IMAGE_PX / Math.max(bitmap.width, bitmap.height));
@@ -152,7 +152,7 @@ export default function Home() {
     saveLang(next);
   }
 
-  // Indicador de conexión
+  // Connection indicator
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
     update();
@@ -164,9 +164,9 @@ export default function Home() {
     };
   }, []);
 
-  // Con red: guardar las últimas alertas oficiales en el dispositivo
+  // Online: save the latest official alerts on the device
   useEffect(() => {
-    if (DEMO) saveOfficialAlerts(DEMO_OFFICIAL); // listos en el dispositivo aunque nunca haya red
+    if (DEMO) saveOfficialAlerts(DEMO_OFFICIAL); // ready on the device even if it's never online
     if (!API) return;
     fetch(`${API}/alerts${DEMO ? "?demo=true" : ""}`, { signal: AbortSignal.timeout(ALERTS_TIMEOUT_MS) })
       .then((r) => r.json())
@@ -174,7 +174,7 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  // Avanzar los pasos visibles mientras se espera la respuesta
+  // Advance the visible steps while waiting for the response
   useEffect(() => {
     if (!loading) return;
     setStep(0);
@@ -182,7 +182,7 @@ export default function Home() {
     return () => clearInterval(id);
   }, [loading]);
 
-  // Llevar la vista al resultado en el celular
+  // Scroll to the result on mobile
   useEffect(() => {
     if (result) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [result]);
@@ -206,9 +206,9 @@ export default function Home() {
     setLoading(true); setError(null); setResult(null);
     const canReach = API && navigator.onLine;
     try {
-      // Sin backend o sin red: directo al clasificador local, sin esperar
+      // No backend or no network: straight to the local classifier, no waiting
       if (!canReach) throw new Error("offline");
-      // Con sesión iniciada, el token de Auth0 permite guardar la verificación en "Mi historial"
+      // When signed in, the Auth0 token lets the check be saved to "My history"
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (isAuthenticated) {
         const token = await getAccessTokenSilently().catch(() => null);
@@ -221,7 +221,7 @@ export default function Home() {
         signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
       });
       const data = await r.json().catch(() => ({}));
-      // Error de la captura con el servidor disponible: mostrarlo, no inventar un veredicto
+      // Screenshot error with the server reachable: show it, don't invent a verdict
       if (!r.ok && image && !text.trim()) {
         setError(data.error ? { es: data.error, en: data.error_en ?? data.error } : T.genericError);
         return;

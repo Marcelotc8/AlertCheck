@@ -1,4 +1,4 @@
-// Datos de demo (Huracán Milton, 9 oct 2024): 5 avisos oficiales archivados + 10 alertas de prueba (5 reales, 5 falsas).
+// Demo data (Hurricane Milton, Oct 9 2024): 5 archived official advisories + 10 test alerts (5 real, 5 fake).
 const data = {
   "_source": "Huracán Milton, 9 de octubre de 2024. Textos oficiales archivados del NHC (Advisory 17) y del NWS Miami / Key West (HLSMFL 18, HLSKEY 18, TORMFL 0043), vía nhc.noaa.gov/archive y mesonet.agron.iastate.edu. Las alertas falsas son inventadas para la demo.",
   "official": [

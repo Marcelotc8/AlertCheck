@@ -1,6 +1,6 @@
-// Reglas deterministas COMPARTIDAS por el backend (barandal del enjambre) y la web (modo sin conexión).
-// La web las importa como `@api/scamSignals`: hay una sola copia, no se pueden desincronizar.
-// Sin dependencias de Node: tiene que poder correr en el navegador.
+// Deterministic rules SHARED by the backend (swarm guardrail) and the web (offline mode).
+// The web imports them as `@api/scamSignals`: there's a single copy, so they can't drift apart.
+// No Node dependencies: it has to run in the browser.
 
 export interface ScamSignal {
   id: string;
@@ -9,7 +9,7 @@ export interface ScamSignal {
   weight: number;
 }
 
-/** Texto mínimo de una alerta oficial que necesitan las reglas (sirve para las del NWS y para las guardadas). */
+/** Minimal official-alert text the rules need (works for NWS alerts and for saved ones). */
 export interface AlertLike {
   id: string;
   event: string;
@@ -18,16 +18,16 @@ export interface AlertLike {
   description?: string;
 }
 
-// ---------- Normalización (contra trucos para esquivar las reglas) ----------
+// ---------- Normalization (against tricks to dodge the rules) ----------
 
-// Letras cirílicas/griegas que parecen latinas ("FЕMA" con E cirílica).
+// Cyrillic/Greek letters that look Latin ("FЕMA" with a Cyrillic E).
 const CONFUSABLES: Record<string, string> = {
   а: "a", е: "e", о: "o", р: "p", с: "c", у: "y", х: "x", і: "i", ј: "j", ѕ: "s", ԁ: "d", ӏ: "l",
   А: "A", В: "B", Е: "E", К: "K", М: "M", Н: "H", О: "O", Р: "P", С: "C", Т: "T", Х: "X", І: "I",
   ο: "o", α: "a", ε: "e", ι: "i", ν: "v", Ο: "O", Α: "A", Ε: "E", Ι: "I", Τ: "T", Μ: "M", Ν: "N",
 };
 
-/** NFKC + sin caracteres invisibles + homoglifos → latín. Se aplica antes de cualquier regla. */
+/** NFKC + no invisible characters + homoglyphs → Latin. Applied before any rule. */
 export function normalizeText(text: string): string {
   return text
     .normalize("NFKC")
@@ -35,17 +35,17 @@ export function normalizeText(text: string): string {
     .replace(/[Ͱ-ϿЀ-ӿ]/g, (ch) => CONFUSABLES[ch] ?? ch);
 }
 
-// ---------- Enlaces ----------
+// ---------- Links ----------
 
-const OFFICIAL_HOSTS = ["floridadisaster.org", "ready.gov"]; // además de cualquier *.gov
+const OFFICIAL_HOSTS = ["floridadisaster.org", "ready.gov"]; // in addition to any *.gov
 const SHORTENERS = ["bit.ly", "tinyurl.com", "t.co", "goo.gl", "cutt.ly", "rb.gy", "is.gd", "ow.ly", "tiny.cc", "shorturl.at"];
 
-/** Enlaces del texto (con o sin https://), como nombres de host en minúsculas. */
+/** Links in the text (with or without https://), as lowercase hostnames. */
 export function extractHosts(text: string): string[] {
   const re = /\b(?:https?:\/\/)?((?:[a-z0-9-]+\.)+[a-z]{2,})(?::\d+)?(?:\/[^\s]*)?/gi;
   const hosts: string[] = [];
   for (const m of text.matchAll(re)) {
-    // "e.g." o "a.m." no son enlaces: exigir un TLD de 2+ letras y que no sea una abreviatura con puntos
+    // "e.g." or "a.m." are not links: require a 2+ letter TLD that isn't a dotted abbreviation
     const host = m[1].toLowerCase().replace(/\.$/, "");
     if (/^([a-z]\.)+[a-z]{1,2}$/.test(host)) continue;
     hosts.push(host);
@@ -53,7 +53,7 @@ export function extractHosts(text: string): string[] {
   return hosts;
 }
 
-/** Oficial = el dominio REAL termina en .gov (no "weather.gov.estafa.com") o es uno de la lista. */
+/** Official = the REAL domain ends in .gov (not "weather.gov.estafa.com") or is on the list. */
 export function isOfficialHost(host: string): boolean {
   return host.endsWith(".gov") || OFFICIAL_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
 }
@@ -61,7 +61,7 @@ export function isOfficialHost(host: string): boolean {
 const PHONE_RE = /(?:\+?1[\s.-]?)?\(?\b\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g;
 export const extractPhones = (text: string) => (text.match(PHONE_RE) ?? []).map((p) => p.replace(/\D/g, "").slice(-10));
 
-// ---------- Reglas ----------
+// ---------- Rules ----------
 
 const RULES: (ScamSignal & { test: (t: string) => boolean })[] = [
   {
@@ -87,7 +87,7 @@ const RULES: (ScamSignal & { test: (t: string) => boolean })[] = [
     weight: 3,
   },
   {
-    // Prompt injection: texto dirigido a la IA, no a la persona. Una alerta real nunca le habla a un modelo.
+    // Prompt injection: text aimed at the AI, not the person. A real alert never talks to a model.
     id: "ai-instructions",
     test: (t) =>
       /\b(ignore|disregard|forget)\b[^.]{0,30}\b(previous|prior|above|all|earlier)\b[^.]{0,20}\b(instructions?|rules|prompts?)\b/i.test(t) ||
@@ -144,7 +144,7 @@ const RULES: (ScamSignal & { test: (t: string) => boolean })[] = [
   },
 ];
 
-/** Umbral a partir del cual el resultado es "suspicious" sí o sí. */
+/** Threshold above which the result is "suspicious" no matter what. */
 export const STRONG_SCAM_SCORE = 3;
 
 export function detectScamSignals(text: string): { signals: ScamSignal[]; score: number } {
@@ -153,11 +153,11 @@ export function detectScamSignals(text: string): { signals: ScamSignal[]; score:
   return { signals, score: signals.reduce((s, r) => s + r.weight, 0) };
 }
 
-// ---------- Evidencia para "verified" ----------
+// ---------- Evidence for "verified" ----------
 
 const norm = (s: string) => normalizeText(s).toLowerCase().replace(/[-–—]/g, " ").replace(/\s+/g, " ");
 
-/** ¿El texto nombra el evento (o el producto) de la alerta oficial y una de sus zonas? */
+/** Does the text name the official alert's event (or product) and one of its areas? */
 export function textMatchesAlert(text: string, a: AlertLike): boolean {
   const t = norm(text);
   const product = a.headline.split(",")[0].trim();
@@ -169,14 +169,14 @@ export function textMatchesAlert(text: string, a: AlertLike): boolean {
   return named && sameArea;
 }
 
-/** Primera alerta oficial que el texto respalda de forma determinista (o null). */
+/** First official alert the text deterministically supports (or null). */
 export function findEvidence<T extends AlertLike>(text: string, alerts: T[]): T | null {
   return alerts.find((a) => textMatchesAlert(text, a)) ?? null;
 }
 
 /**
- * Lo que impide "verified" aunque el texto coincida con una alerta oficial: cualquier señal (salvo urgencia,
- * que las alertas reales usan) o un teléfono que la alerta oficial no trae (refugios inventados, "llama a…").
+ * What blocks "verified" even if the text matches an official alert: any signal (except urgency,
+ * which real alerts use) or a phone number the official alert doesn't contain (invented shelters, "call…").
  */
 export function verifiedBlockers(text: string, alert: AlertLike | null): { reason: string; es: string }[] {
   const blockers: { reason: string; es: string }[] = detectScamSignals(text).signals.filter((s) => s.id !== "urgency");

@@ -1,9 +1,9 @@
-// Gemini: (1) leer capturas de pantalla de alertas y (2) redactar la explicación bilingüe del veredicto.
+// Gemini: (1) read screenshots of alerts and (2) write the bilingual explanation of the verdict.
 import type { VerifyResult } from "./swarmVerify.js";
 
 const MODEL = () => process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
 const ATTEMPT_TIMEOUT_MS = 15000;
-const BACKOFF_MS = [1000, 3000]; // 3 intentos, máx. ~50 s en total
+const BACKOFF_MS = [1000, 3000]; // 3 attempts, max ~50 s total
 const RETRYABLE = new Set([429, 500, 502, 503, 504]);
 
 const QUOTA_COOLDOWN_MS = 5 * 60 * 1000;
@@ -12,9 +12,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const PRUNE_URL = "https://api.withprune.com/v1/proxy/gemini/generateContent";
 const PRUNE_TIMEOUT_MS = 20000;
-let pruneDownUntil = 0; // si Prune falla, ir directo a Gemini 5 min (la demo no puede caerse por el gateway)
+let pruneDownUntil = 0; // if Prune fails, go straight to Gemini for 5 min (the demo can't go down because of the gateway)
 
-/** Recibo de Prune para una llamada: caché, costo y ahorro (de `prune_metadata`). */
+/** Prune receipt for one call: cache, cost and savings (from `prune_metadata`). */
 export interface PruneReceipt {
   cacheHit: boolean;
   costUsd: number;
@@ -22,10 +22,10 @@ export interface PruneReceipt {
 }
 
 /**
- * Solo texto → Gemini a través del gateway Prune (caché, Shield/redacción de datos, recibo de costo;
- * la llave de Gemini vive en el vault de Prune). Prune usa formato `messages` e ignora responseSchema,
- * así que pedimos el JSON en el prompt y validamos las claves requeridas. Devuelve null si no se pudo
- * (sin llave, error, JSON inválido) y quien llama cae a Gemini directo.
+ * Text only → Gemini through the Prune gateway (cache, Shield/data redaction, cost receipt;
+ * the Gemini key lives in Prune's vault). Prune uses the `messages` format and ignores responseSchema,
+ * so we ask for JSON in the prompt and validate the required keys. Returns null on failure
+ * (no key, error, invalid JSON) and the caller falls back to Gemini directly.
  */
 async function generateJsonViaPrune<T>(
   prompt: string,
@@ -41,8 +41,8 @@ async function generateJsonViaPrune<T>(
         "X-Prune-Key": key,
         "Content-Type": "application/json",
         "X-Prune-Feature-Id": feature,
-        // Caché apagado: con prompts largos de prefijo común, Prune da aciertos semánticos aun con "exact"
-        // (devolvía "esta alerta es auténtica" para una estafa). En verificación eso es inaceptable.
+        // Cache off: with long prompts sharing a common prefix, Prune returns semantic hits even with "exact"
+        // (it returned "this alert is authentic" for a scam). In verification that is unacceptable.
         "X-Prune-Cache": "off",
       },
       body: JSON.stringify({
@@ -68,29 +68,29 @@ async function generateJsonViaPrune<T>(
     const json = raw.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
     const data = JSON.parse(json) as Record<string, unknown>;
     const missing = ((schema.required as string[]) ?? []).filter((k) => data[k] === undefined);
-    if (missing.length) throw new Error(`faltan claves ${missing.join(", ")}`);
+    if (missing.length) throw new Error(`missing keys ${missing.join(", ")}`);
     const m = body.prune_metadata ?? {};
     return {
       data: data as T,
       receipt: { cacheHit: !!m.cache_hit, costUsd: m.cost_with_prune_usd ?? 0, savedUsd: m.cost_saved_usd ?? 0 },
     };
   } catch (e) {
-    console.warn(`Prune: ${(e as Error).message} → Gemini directo`);
-    // Error del gateway: dejarlo descansar. JSON inválido de una sola respuesta: no hace falta.
+    console.warn(`Prune: ${(e as Error).message} → direct Gemini`);
+    // Gateway error: let it rest. Invalid JSON from a single response: no need.
     if (!(e instanceof SyntaxError) && !/faltan claves/.test((e as Error).message)) pruneDownUntil = Date.now() + 5 * 60 * 1000;
     return null;
   }
 }
 
 
-// Cortacircuitos: si la cuota de Gemini se agotó, no insistir durante 5 minutos (responder al instante con respaldo).
+// Circuit breaker: if the Gemini quota is exhausted, stop retrying for 5 minutes (answer instantly with the fallback).
 let quotaExhaustedUntil = 0;
 
 async function generateJson<T>(parts: unknown[], schema: Record<string, unknown>): Promise<T> {
   if (Date.now() < quotaExhaustedUntil) {
-    throw new Error("Gemini: cuota agotada, se reintentará en unos minutos");
+    throw new Error("Gemini: quota exhausted, will retry in a few minutes");
   }
-  let lastError: Error = new Error("Gemini: sin intentos");
+  let lastError: Error = new Error("Gemini: no attempts");
   for (let attempt = 0; attempt <= BACKOFF_MS.length; attempt++) {
     if (attempt > 0) await sleep(BACKOFF_MS[attempt - 1]);
     try {
@@ -111,10 +111,10 @@ async function generateJson<T>(parts: unknown[], schema: Record<string, unknown>
         lastError = new Error(`Gemini ${res.status}: ${body.slice(0, 200)}`);
         if (res.status === 429 && /quota/i.test(body)) {
           quotaExhaustedUntil = Date.now() + QUOTA_COOLDOWN_MS;
-          throw new Error("Gemini: cuota agotada (revisa el plan en Google AI Studio)");
+          throw new Error("Gemini: quota exhausted (check your plan in Google AI Studio)");
         }
         if (RETRYABLE.has(res.status)) continue;
-        throw lastError; // 400/403/404: reintentar no sirve
+        throw lastError; // 400/403/404: retrying won't help
       }
       const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
       const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
@@ -122,7 +122,7 @@ async function generateJson<T>(parts: unknown[], schema: Record<string, unknown>
     } catch (e) {
       const err = e as Error;
       if (err.name === "TimeoutError" || err.name === "AbortError") {
-        lastError = new Error(`Gemini: sin respuesta en ${ATTEMPT_TIMEOUT_MS / 1000}s`);
+        lastError = new Error(`Gemini: no response in ${ATTEMPT_TIMEOUT_MS / 1000}s`);
         continue;
       }
       throw err;
@@ -132,14 +132,14 @@ async function generateJson<T>(parts: unknown[], schema: Record<string, unknown>
 }
 
 export interface ExtractedAlert {
-  text: string; // texto completo de la alerta tal como aparece
+  text: string; // full alert text exactly as it appears
   channel: string; // whatsapp | sms | social | email | official_app | other
-  sender: string; // remitente visible, o "" si no se ve
+  sender: string; // visible sender, or "" if not shown
   links: string[];
   phoneNumbers: string[];
 }
 
-/** Lee una captura (WhatsApp, SMS, redes) y devuelve el texto de la alerta y sus metadatos. */
+/** Reads a screenshot (WhatsApp, SMS, social) and returns the alert text and its metadata. */
 export async function extractAlertFromImage(base64: string, mimeType: string): Promise<ExtractedAlert> {
   return generateJson<ExtractedAlert>(
     [
@@ -170,7 +170,7 @@ export interface Explanation {
   es: string;
   reasons_es: string[];
   source?: "gemini" | "template";
-  prune?: PruneReceipt; // presente si la explicación pasó por el gateway Prune
+  prune?: PruneReceipt; // present if the explanation went through the Prune gateway
 }
 
 const TEMPLATES: Record<VerifyResult["label"], { en: string; es: string }> = {
@@ -188,12 +188,12 @@ const TEMPLATES: Record<VerifyResult["label"], { en: string; es: string }> = {
   },
 };
 
-/** Explicación de respaldo cuando Gemini no responde: plantilla por etiqueta + razones en español del Judge. */
+/** Fallback explanation when Gemini doesn't respond: per-label template + the Judge's Spanish reasons. */
 export function templateExplanation(v: VerifyResult): Explanation {
   return { ...TEMPLATES[v.label], reasons_es: v.reasons_es.length ? v.reasons_es : v.reasons, source: "template" };
 }
 
-/** Convierte el veredicto del enjambre en una explicación simple, en inglés y español. Va por Prune; si falla, Gemini directo. */
+/** Turns the swarm's verdict into a simple explanation in English and Spanish. Goes through Prune; on failure, direct Gemini. */
 export async function explainVerdict(alertText: string, v: VerifyResult): Promise<Explanation> {
   const verdict = {
     label: v.label,

@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Lang } from "@/lib/config";
 import AuthButton from "./AuthButton";
 
-/** Cabecera común: logo, sesión (Auth0) y cambio de idioma. Compacta para pantallas de 320–375 px. */
+/** Shared header: logo, session (Auth0) and language switch. Compact for 320–375 px screens. */
 export default function Header({
   lang,
   onToggleLang,

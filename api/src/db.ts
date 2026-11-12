@@ -1,16 +1,16 @@
-// Historial de verificaciones en Tiger Data (PostgreSQL + TimescaleDB).
-// Sin DATABASE_URL todo sigue funcionando: simplemente no se guarda nada.
+// Verification history in Tiger Data (PostgreSQL + TimescaleDB).
+// Without DATABASE_URL everything still works: nothing is saved.
 import pg from "pg";
 import type { VerifyResult } from "./swarmVerify.js";
 
 const url = process.env.DATABASE_URL?.trim();
-// sslmode de la URL haría que pg exija verificación estricta; el cifrado TLS se configura abajo con `ssl`.
+// The URL's sslmode would make pg require strict verification; TLS encryption is configured below with `ssl`.
 const connectionString = url?.replace(/([?&])sslmode=[^&]*&?/, "$1").replace(/[?&]$/, "");
 const pool = url
   ? new pg.Pool({
       connectionString,
       max: 3,
-      // Tiger Cloud exige TLS; su certificado no está en el almacén de Node, así que no se valida la cadena.
+      // Tiger Cloud requires TLS; its certificate isn't in Node's store, so the chain isn't validated.
       ssl: url.includes("localhost") ? undefined : { rejectUnauthorized: false },
     })
   : null;
@@ -19,7 +19,7 @@ export const dbEnabled = () => pool !== null;
 
 let ready: Promise<void> | null = null;
 
-/** Crea la tabla una sola vez (y la convierte en hypertable de TimescaleDB por fecha). */
+/** Creates the table once (and turns it into a TimescaleDB hypertable by time). */
 function ensureSchema(): Promise<void> {
   if (!pool) return Promise.resolve();
   ready ??= (async () => {
@@ -40,12 +40,12 @@ function ensureSchema(): Promise<void> {
         PRIMARY KEY (id, created_at)
       )`);
     await pool.query(`CREATE INDEX IF NOT EXISTS alert_checks_user_idx ON alert_checks (user_id, created_at DESC)`);
-    // Hypertable: particiona por tiempo (requiere la extensión timescaledb, que Tiger Cloud trae activada).
+    // Hypertable: partitions by time (requires the timescaledb extension, enabled by default on Tiger Cloud).
     await pool
       .query(`SELECT create_hypertable('alert_checks', by_range('created_at'), if_not_exists => TRUE, migrate_data => TRUE)`)
       .catch((e: Error) => console.warn("hypertable:", e.message));
   })().catch((e) => {
-    ready = null; // reintentar en la próxima llamada
+    ready = null; // retry on the next call
     throw e;
   });
   return ready;
@@ -65,7 +65,7 @@ export interface CheckRow {
   created_at: string;
 }
 
-/** Guarda una verificación. Nunca lanza: si la base falla, la respuesta al usuario no se ve afectada. */
+/** Saves a verification. Never throws: if the database fails, the user's response is unaffected. */
 export async function saveCheck(
   v: VerifyResult,
   opts: { text: string; userId: string | null; source: "text" | "image"; demo: boolean; reasonsEs: string[] }
@@ -94,7 +94,7 @@ export async function saveCheck(
   }
 }
 
-/** Últimas verificaciones de un usuario. */
+/** A user's latest verifications. */
 export async function listChecks(userId: string, limit = 50): Promise<CheckRow[]> {
   if (!pool) return [];
   await ensureSchema();
@@ -106,7 +106,7 @@ export async function listChecks(userId: string, limit = 50): Promise<CheckRow[]
   return rows;
 }
 
-/** Totales por etiqueta en las últimas 24 h, agrupados por hora con time_bucket de TimescaleDB. */
+/** Totals per label over the last 24 h, grouped by hour with TimescaleDB's time_bucket. */
 export async function stats24h(): Promise<{ bucket: string; label: string; n: number }[]> {
   if (!pool) return [];
   await ensureSchema();

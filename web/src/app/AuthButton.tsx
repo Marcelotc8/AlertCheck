@@ -12,7 +12,7 @@ const T = {
 
 const btn = "min-h-9 rounded-md border border-white/40 px-2.5 text-sm font-medium hover:bg-white/10 inline-flex items-center";
 
-/** Botón de sesión + enlace a "Mi historial" (para voluntarios y refugios). */
+/** Sign-in button + link to "My history" (for volunteers and shelters). */
 export default function AuthButton({ lang, returnTo = "/", showHistory = true }: { lang: Lang; returnTo?: string; showHistory?: boolean }) {
   const { isAuthenticated, isLoading, user, loginWithRedirect, logout } = useAuth0();
   if (isLoading) return null;

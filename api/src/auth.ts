@@ -1,4 +1,4 @@
-// Valida el access token de Auth0 (JWT RS256) que manda el frontend en "Authorization: Bearer …".
+// Validates the Auth0 access token (RS256 JWT) the frontend sends in "Authorization: Bearer …".
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
 const DOMAIN = process.env.AUTH0_DOMAIN ?? "dev-qultyktmef157l4q.us.auth0.com";
@@ -7,7 +7,7 @@ const ISSUER = `https://${DOMAIN}/`;
 
 const jwks = createRemoteJWKSet(new URL(`${ISSUER}.well-known/jwks.json`));
 
-/** Devuelve el id del usuario (claim `sub`) o null si no hay token o no es válido. */
+/** Returns the user id (`sub` claim), or null if there is no token or it is invalid. */
 export async function userFromAuthHeader(header: string | undefined): Promise<string | null> {
   const token = header?.match(/^Bearer\s+(.+)$/i)?.[1];
   if (!token) return null;

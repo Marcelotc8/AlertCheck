@@ -1,4 +1,4 @@
-// Clasificador sin conexión: reglas compartidas con el backend + últimas alertas oficiales guardadas en el dispositivo.
+// Offline classifier: rules shared with the backend + latest official alerts saved on the device.
 import { areaName, eventName } from "./events";
 import { detectScamSignals, findEvidence, STRONG_SCAM_SCORE, verifiedBlockers } from "@api/scamSignals";
 
@@ -26,13 +26,13 @@ const HAZARDS = /(hurricane|tropical storm|storm surge|flood|evacuat|huracán|to
 export function classifyOffline(
   text: string,
   cached: CachedAlert[] = [],
-  opts: { ignoreExpiry?: boolean } = {} // modo demo: los avisos archivados ya expiraron
+  opts: { ignoreExpiry?: boolean } = {} // demo mode: archived advisories have already expired
 ): OfflineResult {
-  // Mismas reglas que el barandal del backend (un solo archivo: api/src/scamSignals.ts)
+  // Same rules as the backend guardrail (single file: api/src/scamSignals.ts)
   const { signals: hits, score } = detectScamSignals(text);
   const now = Date.now();
   const active = opts.ignoreExpiry ? cached : cached.filter((a) => !a.expires || Date.parse(a.expires) > now);
-  // Coincide por tipo de evento ("Tornado Warning") o por el producto ("Hurricane Milton Advisory Number 17") + zona
+  // Matches by event type ("Tornado Warning") or by product ("Hurricane Milton Advisory Number 17") + area
   const matched = findEvidence(text, active);
   const blockers = verifiedBlockers(text, matched);
 
@@ -72,7 +72,7 @@ export function classifyOffline(
   };
 }
 
-// Explicaciones simples sin conexión (sin Gemini): una por etiqueta, en inglés y español.
+// Simple offline explanations (no Gemini): one per label, in English and Spanish.
 const EXPLAIN: Record<Label, { en: string; es: string }> = {
   suspicious: {
     en: "This message has signs of a scam or false alert. Do not pay, do not share personal data and do not forward it. Follow only official alerts from the National Weather Service and your county.",

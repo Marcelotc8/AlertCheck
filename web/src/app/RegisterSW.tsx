@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-/** Registra el service worker (solo en producción, para no interferir con la recarga en caliente). */
+/** Registers the service worker (production only, so it doesn't interfere with hot reload). */
 export default function RegisterSW() {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;

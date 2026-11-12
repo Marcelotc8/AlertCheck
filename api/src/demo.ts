@@ -1,6 +1,6 @@
-// Modo demo: avisos oficiales archivados (Huracán Milton, 9 oct 2024) como officialOverride.
+// Demo mode: archived official advisories (Hurricane Milton, Oct 9 2024) as officialOverride.
 import type { Label, OfficialAlert } from "./swarmVerify.js";
-// Datos en un módulo TS (no un JSON leído del disco) para que funcionen igual en Node, en el servidor y en Vercel.
+// Data lives in a TS module (not a JSON read from disk) so it works the same in Node, on the server and on Vercel.
 import demoData from "./demoData.js";
 
 export interface DemoAlert {
@@ -20,5 +20,5 @@ const data = demoData as unknown as {
 export const DEMO_OFFICIAL: OfficialAlert[] = data.official;
 export const DEMO_ALERTS: DemoAlert[] = data.alerts;
 
-/** DEMO_MODE=true en .env fuerza el modo demo para todas las verificaciones. */
+/** DEMO_MODE=true in .env forces demo mode for every verification. */
 export const demoForced = () => process.env.DEMO_MODE === "true";

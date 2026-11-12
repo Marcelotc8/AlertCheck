@@ -1,5 +1,5 @@
-// Nombres en español de los productos del NWS (los datos oficiales vienen siempre en inglés).
-// Los nombres de lugares (condados, zonas) no se traducen.
+// Spanish names for NWS products (official data always comes in English).
+// Place names (counties, zones) are not translated.
 const EVENTS_ES: [RegExp, string][] = [
   [/^hurricane warning$/i, "Aviso de huracán"],
   [/^hurricane watch$/i, "Vigilancia de huracán"],
@@ -26,8 +26,8 @@ export function eventName(event: string, lang: "en" | "es"): string {
   return event;
 }
 
-// Zonas del NWS: se traducen los modificadores ("Northern", "Coastal"…), no los nombres propios.
-const C = String.raw`(Palm Beach|St\. Lucie|Indian River|[\w-]+)`; // condado (algunos tienen dos palabras)
+// NWS zones: modifiers ("Northern", "Coastal"…) are translated, proper names are not.
+const C = String.raw`(Palm Beach|St\. Lucie|Indian River|[\w-]+)`; // county (some are two words)
 const r = (src: string) => new RegExp(src.replaceAll("{C}", C), "g");
 const AREA_ES: [RegExp, string][] = [
   [/\bFlorida Keys\b/g, "Cayos de Florida"],

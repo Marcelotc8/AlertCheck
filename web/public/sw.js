@@ -1,5 +1,5 @@
-// StormCheck service worker: guarda la app en el dispositivo para que abra sin conexión.
-// Solo cachea recursos del mismo origen; las llamadas a la API (otro origen) pasan directo a la red.
+// AlertCheck service worker: stores the app on the device so it opens offline.
+// Only caches same-origin resources; API calls (another origin) go straight to the network.
 const VERSION = "stormcheck-v2";
 const SHELL = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
@@ -18,8 +18,8 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// La página manda los archivos que ya cargó antes de que el SW existiera (JS, CSS, fuentes),
-// así basta con abrir la app una vez con red para que funcione en modo avión.
+// The page sends the files it loaded before the SW existed (JS, CSS, fonts),
+// so opening the app once online is enough for it to work in airplane mode.
 self.addEventListener("message", (event) => {
   if (event.data?.type !== "precache" || !Array.isArray(event.data.urls)) return;
   const urls = event.data.urls.filter((u) => {
@@ -38,8 +38,8 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // Páginas: red primero (siempre la versión más nueva), caché si no hay red.
-  // Se guarda por ruta (sin ?code=&state= del login), y si una ruta nunca se visitó se usa la portada.
+  // Pages: network first (always the newest version), cache when offline.
+  // Stored per path (without the login's ?code=&state=); if a path was never visited, the home page is used.
   if (req.mode === "navigate") {
     const key = url.pathname;
     event.respondWith(
@@ -56,7 +56,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Archivos de build (/_next/static tienen hash) e iconos: caché primero.
+  // Build files (/_next/static are hashed) and icons: cache first.
   event.respondWith(
     caches.match(req).then(
       (hit) =>

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Actualiza la API en el servidor después de un git push.  Uso: ssh root@IP 'bash /opt/stormcheck/deploy/update.sh'
+# Updates the API on the server after a git push.  Usage: ssh root@IP 'bash /opt/stormcheck/deploy/update.sh'
 set -euo pipefail
 cd /opt/stormcheck
 git pull --ff-only

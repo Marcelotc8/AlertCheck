@@ -1,5 +1,5 @@
-// Corre las 10 alertas de demo contra la API pública (Vultr) de punta a punta: HTTPS → Swarms + Gemini → Tiger Data.
-// Uso: npm run demo:prod   (o API_URL=https://... npm run demo:prod). Cuesta ~$0.04 por alerta.
+// Runs the 10 demo alerts end to end against the public API (Vultr): HTTPS → Swarms + Gemini → Tiger Data.
+// Usage: npm run demo:prod   (or API_URL=https://... npm run demo:prod). Costs ~$0.04 per alert.
 const API = process.env.API_URL ?? "https://149-28-101-147.sslip.io";
 
 type Demo = { id: string; expected: string; text: string };
@@ -32,7 +32,7 @@ for (const r of rows) {
   ok += +pass;
   cost += r.cost;
   console.log(
-    `${pass ? "✅" : "❌"} ${r.id.padEnd(7)} esperado=${r.expected.padEnd(10)} obtenido=${String(r.got).padEnd(10)} conf=${Number(r.conf).toFixed(2)} ${r.secs.toFixed(1)}s $${r.cost.toFixed(4)} expl=${r.expl} db=${r.saved ? "✓" : "✗"} match=${r.matched}${r.overridden ? ` (barandal: enjambre dijo ${r.overridden})` : ""}`
+    `${pass ? "✅" : "❌"} ${r.id.padEnd(7)} expected=${r.expected.padEnd(10)} got=${String(r.got).padEnd(10)} conf=${Number(r.conf).toFixed(2)} ${r.secs.toFixed(1)}s $${r.cost.toFixed(4)} expl=${r.expl} db=${r.saved ? "✓" : "✗"} match=${r.matched}${r.overridden ? ` (guardrail: swarm said ${r.overridden})` : ""}`
   );
 }
-console.log(`\n${ok}/${rows.length} correctas (meta: ≥8) · costo $${cost.toFixed(4)} · ${((Date.now() - t0) / 1000).toFixed(1)}s en total · ${API}`);
+console.log(`\n${ok}/${rows.length} correct (goal: ≥8) · cost $${cost.toFixed(4)} · ${((Date.now() - t0) / 1000).toFixed(1)}s total · ${API}`);

@@ -3,7 +3,7 @@
 import { Auth0Provider } from "@auth0/auth0-react";
 import { AUTH0 } from "@/lib/config";
 
-/** Inicio de sesión con Auth0 (Universal Login + PKCE). La sesión se guarda en el dispositivo para sobrevivir recargas. */
+/** Sign-in with Auth0 (Universal Login + PKCE). The session is stored on the device to survive reloads. */
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <Auth0Provider
@@ -17,7 +17,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       useRefreshTokens
       useRefreshTokensFallback
       onRedirectCallback={(appState) => {
-        // Volver a la página desde la que se inició sesión (p. ej. /history) y limpiar ?code=&state= de la URL
+        // Return to the page sign-in started from (e.g. /history) and strip ?code=&state= from the URL
         window.history.replaceState({}, "", appState?.returnTo ?? window.location.pathname);
         if (appState?.returnTo && appState.returnTo !== "/") window.location.assign(appState.returnTo);
       }}
